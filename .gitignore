@@ -1,0 +1,9 @@
+.env
+__pycache__/
+.venv/
+uploads/
+babel.cfg
+messages.pot
+/static/cloudflare_ips_cache.json
+*.bat
+*.tar

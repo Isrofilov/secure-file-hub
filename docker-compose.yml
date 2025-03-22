@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  file-manager:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+    environment:
+      - TOTP_SECRET=your_secure_totp_secret_here # Optional, will be generated on startup
+      - BACKUP_CODES=123456,234567,345678,456789 # Optional
+      - UPLOAD_FOLDER=uploads # optional
+      - TIMEZONE=Europe/Moscow # optional
+      - IMAGE_PREVIEW_ENABLED=true # optional
+      - DOMAIN=yourdomain.com # optional
+      - UPLOAD_DOMAIN=upload.yourdomain.com # optional
+    restart: unless-stopped

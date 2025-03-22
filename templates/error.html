@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container error-container text-center">
+    <div class="card shadow">
+        <div class="card-header bg-danger text-white">
+            <h2><i class="bi bi-exclamation-triangle-fill"></i> {{ _('Error') }} {{ error_code }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="error-icon mb-4">
+                {% if error_code == 404 %}
+                    <i class="bi bi-search text-muted" style="font-size: 4rem;"></i>
+                {% elif error_code == 403 %}
+                    <i class="bi bi-lock-fill text-muted" style="font-size: 4rem;"></i>
+                {% elif error_code == 500 %}
+                    <i class="bi bi-gear-fill text-muted" style="font-size: 4rem;"></i>
+                {% else %}
+                    <i class="bi bi-emoji-frown text-muted" style="font-size: 4rem;"></i>
+                {% endif %}
+            </div>
+            
+            <h3 class="mb-4">{{ error_message }}</h3>
+            
+            <p class="text-muted mb-4">
+                {% if error_code == 404 %}
+                    {{ _('The requested page was not found. It may have been moved or deleted.') }}
+                {% elif error_code == 403 %}
+                    {{ _('You do not have access to this page.') }}
+                {% elif error_code == 500 %}
+                    {{ _('An error occurred on the server. Please try again later.') }}
+                {% else %}
+                    {{ _('Something has gone wrong. Please try again.') }}
+                {% endif %}
+            </p>
+            
+            <div class="d-flex justify-content-center">
+                <a href="{{ url_for('files.files') }}" class="btn btn-primary me-2">
+                    <i class="bi bi-house-fill"></i> {{ _('Home') }}
+                </a>
+                <button onclick="history.back()" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i> {{ _('Back') }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Animation of the error icon
+    document.addEventListener('DOMContentLoaded', function() {
+        const errorIcon = document.querySelector('.error-icon i');
+        
+        if (errorIcon) {
+            // Small animation for the icon
+            function animateIcon() {
+                errorIcon.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                    errorIcon.style.transform = 'scale(1)';
+                }, 500);
+            }
+            
+            // The first animation
+            animateIcon();
+            
+            // Repeat animation every 3 seconds
+            setInterval(animateIcon, 3000);
+        }
+    });
+</script>
+{% endblock %}

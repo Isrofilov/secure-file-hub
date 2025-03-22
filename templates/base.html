@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('language') or 'en' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ _('Secure File Hub') }}</title>
+    <link href="/static/bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 20px;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            margin-bottom: 20px;
+        }
+        .file-item:hover {
+            background-color: #f1f1f1;
+        }
+        .file-item td {
+            vertical-align: middle;
+        }
+        .file-actions {
+            white-space: nowrap;
+        }
+        .mobile-action {
+            display: none;
+        }
+        
+        @media (max-width: 767px) {
+            .desktop-action {
+                display: none;
+            }
+            .mobile-action {
+                display: inline-block;
+            }
+            .table-responsive {
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .card-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .card-header .btn {
+                width: 100%;
+            }
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding: 10px 0;
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        .login-container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 15px;
+        }
+        
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            max-width: 300px;
+        }
+
+        .sortable {
+            cursor: pointer;
+        }
+
+        .sortable:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .sort-asc::after {
+            content: " ↑";
+        }
+
+        .sort-desc::after {
+            content: " ↓";
+        }
+
+        .image-preview {
+            position: absolute;
+            max-width: 200px;
+            max-height: 200px;
+            border: 2px solid #fff;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+            background-color: white;
+            padding: 5px;
+        }
+
+        .card {
+            transition: box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
+        }
+
+        .btn {
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .file-item {
+            transition: background-color 0.2s ease;
+        }
+        .preview-img-container {
+        position: relative;
+        border-radius: 8px;
+        }
+        
+        .object-fit-contain {
+            object-fit: contain;
+            object-position: center;
+        }
+        
+        .file-icon i {
+            transition: transform 0.3s ease;
+        }
+        
+        .file-icon:hover i {
+            transform: scale(1.1);
+        }
+
+        .selected-file td, .file-item.selected-file .card {
+            background-color: rgba(13, 110, 253, 0.1) !important;
+            position: relative;
+        }
+        
+        .file-item.selected-file .card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px solid #0d6efd;
+            border-radius: 0.375rem;
+            pointer-events: none;
+        }
+
+        .selected-file td:first-child {
+            border-left: 3px solid #0d6efd;
+        }
+
+        .bulk-download-form {
+            display: none;
+        }
+
+        .dropzone {
+            transition: background-color 0.3s, border-color 0.3s;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .dropzone-highlight {
+            background-color: rgba(13, 110, 253, 0.1);
+            border-color: #0d6efd !important;
+        }
+    </style>
+    <link rel="icon" type="image/png" href="/static/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+    <link rel="shortcut icon" href="/static/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="SecureFile" />
+    <link rel="manifest" href="/static/site.webmanifest" />
+</head>
+<body>
+    {% if session.authenticated %}
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('files.files') }}">{{ _('Secure File Hub') }}</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('files.files') }}"><i class="bi bi-folder"></i> {{ _('Files') }}</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('files.upload_file') }}"><i class="bi bi-upload"></i> {{ _('Upload') }}</a>
+                    </li>
+                </ul>
+                <div class="navbar-nav me-3">
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-translate"></i> {{ _('Language') }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageDropdown">
+                            <li><a class="dropdown-item {% if session.get('language') == 'en' %}active{% endif %}" href="{{ url_for('change_language', lang='en') }}">English</a></li>
+                            <li><a class="dropdown-item {% if session.get('language') == 'ru' %}active{% endif %}" href="{{ url_for('change_language', lang='ru') }}">Русский</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <span class="navbar-text me-3 d-none d-lg-block">
+                    <i class="bi bi-clock"></i> {{ _('Login time') }}: {{ session.login_time }}
+                </span>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light" id="logoutButton">
+                    <i class="bi bi-box-arrow-right"></i> {{ _('Logout') }}
+                </a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <!-- Modal window to confirm actions -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="confirmModalLabel">{{ _('Confirm') }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="confirmModalBody">
+                {{ _('Are you sure you want to perform this action?') }}?
+            </div>
+            <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ _('Cancel') }}</button>
+            <button type="button" class="btn btn-primary" id="confirmModalAction">{{ _('Confirm') }}</button>
+            </div>
+        </div>
+        </div>
+    </div>
+    
+    <!-- Modal warning window -->
+    <div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="alertModalLabel">{{ _('Notification') }}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="alertModalBody">
+                {{ _('Information message') }}
+            </div>
+            <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{{ _('OK') }}</button>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="alert-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+        
+        {% block content %}{% endblock %}
+        
+        <footer class="footer">
+            <div class="container">
+                <p class="text-muted small">{{ _('Page generation time') }}: {{ get_generation_time() }}</p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/static/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Automatic hiding Flash notifications after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(function() {
+                // We select only Flash notifications (those in Alert-Container)
+                var alerts = document.querySelectorAll('.alert-container .alert');
+                alerts.forEach(function(alert) {
+                    // Close through built -in Bootstrap methods
+                    const alertInstance = bootstrap.Alert.getOrCreateInstance(alert);
+                    alertInstance.close();
+                });
+            }, 5000);
+        });
+    </script>
+    <script>
+        // Warning function
+        function showAlert(message, title = "{{ _('Notification') }}") {
+          const alertModal = document.getElementById('alertModal');
+          const alertModalLabel = document.getElementById('alertModalLabel');
+          const alertModalBody = document.getElementById('alertModalBody');
+          
+          alertModalLabel.textContent = title;
+          alertModalBody.textContent = message;
+          
+          const modal = new bootstrap.Modal(alertModal);
+          modal.show();
+        }
+        
+        // Function for showing dialogue confirmation 
+        function showConfirm(message, callback, title = "{{ _('Confirm') }}") {
+          const confirmModal = document.getElementById('confirmModal');
+          const confirmModalLabel = document.getElementById('confirmModalLabel');
+          const confirmModalBody = document.getElementById('confirmModalBody');
+          const confirmModalAction = document.getElementById('confirmModalAction');
+          
+          confirmModalLabel.textContent = title;
+          confirmModalBody.textContent = message;
+          
+          // We delete previous events
+          const newConfirmButton = confirmModalAction.cloneNode(true);
+          confirmModalAction.parentNode.replaceChild(newConfirmButton, confirmModalAction);
+          
+          // Add a new processor
+          newConfirmButton.addEventListener('click', function() {
+            bootstrap.Modal.getInstance(confirmModal).hide();
+            if (typeof callback === 'function') {
+              callback(true);
+            }
+          });
+          
+          const modal = new bootstrap.Modal(confirmModal);
+          modal.show();
+          
+          // Closing a modal window without confirmation
+          confirmModal.addEventListener('hidden.bs.modal', function handler() {
+            if (typeof callback === 'function' && !newConfirmButton.classList.contains('clicked')) {
+              callback(false);
+            }
+            confirmModal.removeEventListener('hidden.bs.modal', handler);
+          });
+        }
+      </script>
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const logoutButton = document.getElementById('logoutButton');
+            if (logoutButton) {
+                logoutButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showConfirm("{{ _('Do you really want to log out?') }}", function(confirmed) {
+                        if (confirmed) {
+                            window.location.href = logoutButton.getAttribute('href');
+                        }
+                    }, "{{ _('Logout') }}");
+                });
+            }
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
