@@ -97,10 +97,10 @@
                         <td>{{ file.date }}</td>
                         <td class="file-actions">
                             <div class="btn-group">
-                                <a href="{{ url_for('files.download_file', filename=file.name) }}" class="btn btn-sm btn-success desktop-action" title="{{ _('Download') }}">
+                                <a href="{{ url_for('files.download_file', filename=file.name, file_hash=file.hash) }}" class="btn btn-sm btn-success desktop-action" title="{{ _('Download') }}">
                                     <i class="bi bi-download"></i> {{ _('Download') }}
                                 </a>
-                                <a href="{{ url_for('files.download_file', filename=file.name) }}" class="btn btn-sm btn-success mobile-action" title="{{ _('Download') }}">
+                                <a href="{{ url_for('files.download_file', filename=file.name, file_hash=file.hash) }}" class="btn btn-sm btn-success mobile-action" title="{{ _('Download') }}">
                                     <i class="bi bi-download"></i>
                                 </a>
                                 {% if file.is_image or file.is_pdf %}
@@ -140,7 +140,7 @@
                         </div>
                         {% if file.is_image and IMAGE_PREVIEW_ENABLED %}
                         <div class="preview-img-container mb-2" style="height: 150px; overflow: hidden;">
-                            <img src="{{ url_for('files.download_file', filename=file.name) }}" 
+                            <img src="{{ url_for('files.download_file', filename=file.name, file_hash=file.hash) }}" 
                                  class="img-preview img-fluid h-100 w-100 object-fit-contain" 
                                  alt="{{ file.name }}" 
                                  loading="lazy">
@@ -170,7 +170,7 @@
                         <p class="card-text small mb-2">{{ file.size }}</p>
                         <p class="card-text small text-muted">{{ file.date }}</p>
                         <div class="btn-group w-100">
-                            <a href="{{ url_for('files.download_file', filename=file.name) }}" class="btn btn-sm btn-success" title="{{ _('Download') }}">
+                            <a href="{{ url_for('files.download_file', filename=file.name, file_hash=file.hash) }}" class="btn btn-sm btn-success" title="{{ _('Download') }}">
                                 <i class="bi bi-download"></i>
                             </a>
                             {% if file.is_image or file.is_pdf %}
@@ -421,20 +421,38 @@
 
         // Mass download processing
         bulkDownloadBtn.addEventListener('click', function() {
-            // If only one file is selected, download it directly
+            // Если выбран только один файл, скачиваем его напрямую
             if (selectedFiles.size === 1) {
                 const fileName = Array.from(selectedFiles)[0];
-                window.location.href = "{{ url_for('files.download_file', filename='') }}" + fileName;
+                
+                // Найти хеш для этого имени файла
+                const fileItem = document.querySelector(`.file-item[data-filename="${fileName}"]`);
+                let fileHash = '';
+                
+                // Ищем хеш в ссылке на скачивание этого файла
+                if (fileItem) {
+                    const downloadLink = fileItem.querySelector('a[href*="download_file"]');
+                    if (downloadLink) {
+                        const url = new URL(downloadLink.href);
+                        fileHash = url.pathname.split('/').pop(); // Получаем последний сегмент URL, который является хешем
+                    }
+                }
+                
+                if (fileHash) {
+                    window.location.href = "{{ url_for('files.download_file', filename='', file_hash='') }}".replace('//', '/') + fileName + '/' + fileHash;
+                } else {
+                    console.error('Не удалось найти хеш для файла:', fileName);
+                }
                 return;
             }
             
-            // Create a form for sending a list of files to the server to form an archive
+            // Создаем форму для отправки списка файлов на сервер для формирования архива
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = "{{ url_for('files.bulk_download') }}";
             form.classList.add('bulk-download-form');
                         
-            // Add a list of selected files
+            // Добавляем список выбранных файлов
             selectedFiles.forEach(fileName => {
                 const input = document.createElement('input');
                 input.name = 'files';
@@ -442,7 +460,7 @@
                 form.appendChild(input);
             });
             
-            // Add the form to the document and send
+            // Добавляем форму в документ и отправляем
             document.body.appendChild(form);
             form.submit();
         });
@@ -808,7 +826,25 @@
         document.querySelectorAll('.preview-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const fileName = this.dataset.file;
-                const fileUrl = "{{ url_for('files.download_file', filename='') }}" + fileName;
+                
+                // Найти хеш в ближайшей ссылке для скачивания
+                const fileItem = this.closest('.file-item');
+                let fileHash = '';
+                
+                if (fileItem) {
+                    const downloadLink = fileItem.querySelector('a[href*="download_file"]');
+                    if (downloadLink) {
+                        const url = new URL(downloadLink.href);
+                        fileHash = url.pathname.split('/').pop(); // Получаем последний сегмент URL, который является хешем
+                    }
+                }
+                
+                if (!fileHash) {
+                    console.error('Не удалось найти хеш для файла:', fileName);
+                    return;
+                }
+                
+                const fileUrl = "{{ url_for('files.download_file', filename='', file_hash='') }}".replace('//', '/') + fileName + '/' + fileHash;
                 const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
                 const previewModalLabel = document.getElementById('previewModalLabel');
                 const previewModalBody = document.getElementById('previewModalBody');
@@ -818,16 +854,16 @@
                 previewModalBody.innerHTML = '';
                 previewDownloadBtn.href = fileUrl;
                 
-                // Check the file extension
+                // Проверяем расширение файла
                 if (/\.(jpe?g|png|gif|webp|svg)$/i.test(fileName)) {
-                    // For images
+                    // Для изображений
                     const img = document.createElement('img');
                     img.src = fileUrl;
                     img.className = 'img-fluid';
                     img.style.maxHeight = '70vh';
                     previewModalBody.appendChild(img);
                     
-                    // Add the possibility of zoom for images
+                    // Добавляем возможность увеличения для изображений
                     img.addEventListener('click', function() {
                         if (this.classList.contains('zoomed')) {
                             this.classList.remove('zoomed');
@@ -841,7 +877,7 @@
                     });
                     img.style.cursor = 'zoom-in';
                 } else if (/\.pdf$/i.test(fileName)) {
-                    // For PDF
+                    // Для PDF
                     const frame = document.createElement('iframe');
                     frame.src = fileUrl + '?preview=true';
                     frame.width = '100%';

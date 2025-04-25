@@ -1,8 +1,9 @@
-from flask import Blueprint, request, render_template, redirect, send_file, url_for, flash, send_from_directory, abort
+from flask import Blueprint, request, render_template, redirect, send_file, url_for, flash, send_from_directory, abort, current_app
 from flask_babel import gettext as _, gettext
 from datetime import datetime, timezone
 from config import DEFAULT_TIMEZONE, DOMAIN, UPLOAD_DOMAIN, USE_CLOUDFLARE_BYPASS, IMAGE_PREVIEW_ENABLED
 from utils.auth import login_required
+from utils.hash_url import get_hash_url, generate_download_hash
 from utils.logging_config import configure_logging
 import logging
 import os
@@ -54,6 +55,7 @@ def files():
                 'size': size_str,
                 'date': file_date,
                 'type': ext[1:] if ext else '',  # File type without point
+                'hash': generate_download_hash(filename, current_app.config['SECRET_KEY']),
                 'is_image': is_image,
                 'is_pdf': is_pdf,
                 'is_document': is_document,
@@ -180,11 +182,22 @@ def upload_bypass():
 
 
 
-@files_bp.route('/download/<filename>')
-@login_required
-def download_file(filename):
+@files_bp.route('/download/<filename>/<file_hash>')
+def download_file(filename, file_hash):
     try:
+        # Проверяем валидность хеша
+        expected_hash = generate_download_hash(filename, current_app.config['SECRET_KEY'])
+        if file_hash != expected_hash:
+            logger.warning(f"Invalid hash attempt for file: {filename}")
+            abort(403)  # Forbidden
+        
         preview_mode = request.args.get('preview', 'false').lower() == 'true'
+        
+        # Проверяем существование файла
+        file_path = os.path.join(current_app.root_path, 'uploads', filename)
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {filename}")
+            abort(404)
         
         response = send_from_directory(
             'uploads',
@@ -192,18 +205,17 @@ def download_file(filename):
             as_attachment=not preview_mode,
             mimetype='application/pdf' if filename.lower().endswith('.pdf') else None
         )
-
+        
         if filename.lower().endswith('.pdf'):
-            # Coding the name of the Content-Disposition heading    
+            # Кодирование имени файла в заголовке Content-Disposition
             encoded_filename = urllib.parse.quote(filename)
             
             if preview_mode:
                 response.headers['Content-Disposition'] = f'inline; filename="{encoded_filename}"'
             else:
                 response.headers['Content-Disposition'] = f'attachment; filename="{encoded_filename}"'
-
+        
         return response
-
     except Exception as e:
         logger.error(f"Error downloading file: {str(e)}")
         abort(404)
