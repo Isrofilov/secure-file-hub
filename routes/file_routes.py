@@ -3,7 +3,7 @@ from flask_babel import gettext as _, gettext
 from datetime import datetime, timezone
 from config import DEFAULT_TIMEZONE, DOMAIN, UPLOAD_DOMAIN, USE_CLOUDFLARE_BYPASS, IMAGE_PREVIEW_ENABLED
 from utils.auth import login_required
-from utils.hash_url import get_hash_url, generate_download_hash
+from utils.hash_url import generate_download_hash
 from utils.logging_config import configure_logging
 import logging
 import os
