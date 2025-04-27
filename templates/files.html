@@ -67,10 +67,10 @@
                 </thead>
                 <tbody>
                     {% for file in files %}
-                    <tr class="file-item" data-filename="{{ file.name }}" data-filetype="{{ file.type }}">
+                    <tr class="file-item" data-filename="{{ file.name }}" data-hash="{{ file.hash }}" data-filetype="{{ file.type }}">
                         <td>
                             <div class="form-check">
-                                <input class="form-check-input file-checkbox" type="checkbox" value="{{ file.name }}">
+                                <input class="form-check-input file-checkbox" type="checkbox" value="{{ file.name }}" data-hash="{{ file.hash }}">
                             </div>
                         </td>
                         <td class="file-name">
@@ -104,10 +104,10 @@
                                     <i class="bi bi-download"></i>
                                 </a>
                                 {% if file.is_image or file.is_pdf %}
-                                <button type="button" class="btn btn-sm btn-info desktop-action preview-btn" data-file="{{ file.name }}" title="{{ _('Preview') }}">
+                                <button type="button" class="btn btn-sm btn-info desktop-action preview-btn" data-file="{{ file.name }}" data-hash="{{ file.hash }}" title="{{ _('Preview') }}">
                                     <i class="bi bi-eye"></i> {{ _('Preview') }}
                                 </button>
-                                <button type="button" class="btn btn-sm btn-info mobile-action preview-btn" data-file="{{ file.name }}" title="{{ _('Preview') }}">
+                                <button type="button" class="btn btn-sm btn-info mobile-action preview-btn" data-file="{{ file.name }}" data-hash="{{ file.hash }}" title="{{ _('Preview') }}">
                                     <i class="bi bi-eye"></i>
                                 </button>
                                 {% endif %}
@@ -130,12 +130,12 @@
         <!-- grid view -->
         <div id="gridView" class="row g-3" style="display: none">
             {% for file in files %}
-            <div class="col-6 col-md-4 col-lg-3 file-item" data-filename="{{ file.name }}" data-filetype="{{ file.type }}">
+            <div class="col-6 col-md-4 col-lg-3 file-item" data-filename="{{ file.name }}" data-filetype="{{ file.type }}" data-hash="{{ file.hash }}">
                 <div class="card h-100">
                     <div class="card-body text-center p-3">
                         <div class="position-absolute top-0 end-0 p-2">
                             <div class="form-check">
-                                <input class="form-check-input file-checkbox" type="checkbox" value="{{ file.name }}">
+                                <input class="form-check-input file-checkbox" type="checkbox" value="{{ file.name }}" data-hash="{{ file.hash }}">
                             </div>
                         </div>
                         {% if file.is_image and IMAGE_PREVIEW_ENABLED %}
@@ -174,7 +174,7 @@
                                 <i class="bi bi-download"></i>
                             </a>
                             {% if file.is_image or file.is_pdf %}
-                            <button type="button" class="btn btn-sm btn-info preview-btn" data-file="{{ file.name }}" title="{{ _('Preview') }}">
+                            <button type="button" class="btn btn-sm btn-info preview-btn" data-file="{{ file.name }}" data-hash="{{ file.hash }}" title="{{ _('Preview') }}">
                                 <i class="bi bi-eye"></i>
                             </button>
                             {% endif %}
@@ -250,7 +250,7 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', () => {
         // Basic elements
         const fileSearch = document.getElementById('fileSearch');
         const clearSearch = document.getElementById('clearSearch');
@@ -262,7 +262,7 @@
         const tableView = document.getElementById('tableView');
         const gridView = document.getElementById('gridView');
 
-        // Modal removal window
+        // Delete modal window
         const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
         const deletePromptSingle = document.getElementById('deletePromptSingle');
         const deletePromptMultiple = document.getElementById('deletePromptMultiple');
@@ -271,7 +271,7 @@
         const filesToDeleteList = document.getElementById('filesToDeleteList');
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
 
-        // Elements for mass operations
+        // Bulk operations elements
         const bulkActionsPanel = document.getElementById('bulkActionsPanel');
         const selectedFilesCount = document.getElementById('selectedFilesCount');
         const bulkDownloadBtn = document.getElementById('bulkDownloadBtn');
@@ -280,24 +280,27 @@
         const deselectAllBtn = document.getElementById('deselectAllBtn');
         const selectAllCheckbox = document.getElementById('selectAllCheckbox');
         const fileCheckboxes = document.querySelectorAll('.file-checkbox');
-        let selectedFiles = new Set();
+        let selectedFiles = new Map();
 
-        // Selection/Removing Choice from all files (for table)
+        // Select/Deselect all files (for table)
         if (selectAllCheckbox) {
             selectAllCheckbox.addEventListener('change', function() {
                 const checkboxes = document.querySelectorAll('.file-checkbox');
                 checkboxes.forEach(checkbox => {
                     checkbox.checked = this.checked;
                     
-                    // Find the parental file (string or card)
+                    // Find parent file item (row or card)
                     const fileItem = checkbox.closest('.file-item');
                     if (fileItem) {
+                        const fileName = fileItem.dataset.filename;
+                        const fileHash = checkbox.dataset.hash || fileItem.dataset.hash;
+                        
                         if (this.checked) {
                             fileItem.classList.add('selected-file');
-                            selectedFiles.add(fileItem.dataset.filename);
+                            selectedFiles.set(fileName, fileHash);
                         } else {
                             fileItem.classList.remove('selected-file');
-                            selectedFiles.delete(fileItem.dataset.filename);
+                            selectedFiles.delete(fileName);
                         }
                     }
                 });
@@ -306,22 +309,23 @@
             });
         }
 
-        // Separate file selection handler
+        // Individual file selection handler
         fileCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', function() {
                 const fileItem = this.closest('.file-item');
                 if (fileItem) {
                     const fileName = fileItem.dataset.filename;
+                    const fileHash = this.dataset.hash || fileItem.dataset.hash;
                     
                     if (this.checked) {
                         fileItem.classList.add('selected-file');
-                        selectedFiles.add(fileName);
+                        selectedFiles.set(fileName, fileHash);
                     } else {
                         fileItem.classList.remove('selected-file');
                         selectedFiles.delete(fileName);
                     }
                     
-                    // We update the state of the main checkbox
+                    // Update master checkbox state
                     if (selectAllCheckbox) {
                         const allCheckboxes = document.querySelectorAll('.file-checkbox');
                         const checkedCheckboxes = document.querySelectorAll('.file-checkbox:checked');
@@ -342,23 +346,24 @@
             });
         });
 
-        // The function of choosing all visible files
-        selectAllBtn.addEventListener('click', function() {
+        // Select all visible files function
+        selectAllBtn.addEventListener('click', () => {
             const visibleFileItems = document.querySelectorAll('.file-item:not([style*="display: none"])');
             
             visibleFileItems.forEach(item => {
                 const checkbox = item.querySelector('.file-checkbox');
                 const fileName = item.dataset.filename;
+                const fileHash = checkbox.dataset.hash || item.dataset.hash;
                 
                 if (checkbox) {
                     checkbox.checked = true;
                 }
                 
                 item.classList.add('selected-file');
-                selectedFiles.add(fileName);
+                selectedFiles.set(fileName, fileHash);
             });
             
-            // We update the state of the main checkbox
+            // Update master checkbox state
             if (selectAllCheckbox) {
                 const visibleCheckboxes = document.querySelectorAll('.file-item:not([style*="display: none"]) .file-checkbox');
                 if (visibleCheckboxes.length > 0) {
@@ -372,19 +377,21 @@
             deselectAllBtn.style.display = 'inline-block';
         });
 
-        // Function of the selection from all files
-        deselectAllBtn.addEventListener('click', function() {
+        // Deselect all files function
+        deselectAllBtn.addEventListener('click', () => {
             fileCheckboxes.forEach(checkbox => {
                 checkbox.checked = false;
                 
                 const fileItem = checkbox.closest('.file-item');
                 if (fileItem) {
                     fileItem.classList.remove('selected-file');
-                    selectedFiles.delete(fileItem.dataset.filename);
                 }
             });
             
-            // We update the state of the main checkbox
+            // Clear selected files
+            selectedFiles.clear();
+            
+            // Update master checkbox state
             if (selectAllCheckbox) {
                 selectAllCheckbox.checked = false;
                 selectAllCheckbox.indeterminate = false;
@@ -395,98 +402,90 @@
             selectAllBtn.style.display = 'inline-block';
         });
 
-        // Update UI elements for mass actions
-        function updateBulkActionUI() {
+        // Update UI elements for bulk actions
+        const updateBulkActionUI = () => {
             const selectedCount = selectedFiles.size;
 
-            // Always update the counter, regardless of the number of selected files
+            // Always update the counter, regardless of selected count
             selectedFilesCount.textContent = selectedCount;
             
             if (selectedCount > 0) {
-                // Show the panel of mass actions
+                // Show bulk actions panel
                 bulkActionsPanel.style.display = 'flex';
                 
-                // We activate the actions buttons
+                // Enable action buttons
                 bulkDownloadBtn.disabled = false;
                 bulkDeleteBtn.disabled = false;
             } else {
-                // We hide the panel of mass actions
+                // Hide bulk actions panel
                 bulkActionsPanel.style.display = 'none';
                 
-                // We deactivate the actions buttons
+                // Disable action buttons
                 bulkDownloadBtn.disabled = true;
                 bulkDeleteBtn.disabled = true;
             }
-        }
+        };
 
-        // Mass download processing
-        bulkDownloadBtn.addEventListener('click', function() {
-            // Если выбран только один файл, скачиваем его напрямую
+        // Bulk download handler
+        bulkDownloadBtn.addEventListener('click', () => {
             if (selectedFiles.size === 1) {
-                const fileName = Array.from(selectedFiles)[0];
-                
-                // Найти хеш для этого имени файла
-                const fileItem = document.querySelector(`.file-item[data-filename="${fileName}"]`);
-                let fileHash = '';
-                
-                // Ищем хеш в ссылке на скачивание этого файла
-                if (fileItem) {
-                    const downloadLink = fileItem.querySelector('a[href*="download_file"]');
-                    if (downloadLink) {
-                        const url = new URL(downloadLink.href);
-                        fileHash = url.pathname.split('/').pop(); // Получаем последний сегмент URL, который является хешем
-                    }
-                }
-                
+                // Direct download for single file
+                const [fileName, fileHash] = Array.from(selectedFiles.entries())[0];
                 if (fileHash) {
-                    window.location.href = "{{ url_for('files.download_file', filename='', file_hash='') }}".replace('//', '/') + fileName + '/' + fileHash;
+                    window.location.href = `${window.location.origin}/download/${fileName}/${fileHash}`;
                 } else {
-                    console.error('Не удалось найти хеш для файла:', fileName);
+                    console.error('Hash not found for file:', fileName);
                 }
                 return;
             }
             
-            // Создаем форму для отправки списка файлов на сервер для формирования архива
+            // Create form for bulk download
             const form = document.createElement('form');
             form.method = 'POST';
-            form.action = "{{ url_for('files.bulk_download') }}";
-            form.classList.add('bulk-download-form');
-                        
-            // Добавляем список выбранных файлов
-            selectedFiles.forEach(fileName => {
-                const input = document.createElement('input');
-                input.name = 'files';
-                input.value = fileName;
-                form.appendChild(input);
-            });
+            form.action = "/bulk_download";
+            form.style.display = 'none';
             
-            // Добавляем форму в документ и отправляем
+            // Add selected files to the form
+            for (const [fileName, fileHash] of selectedFiles.entries()) {
+                const nameInput = document.createElement('input');
+                nameInput.name = 'files';
+                nameInput.value = fileName;
+                form.appendChild(nameInput);
+                
+                // Add hash if available
+                const hashInput = document.createElement('input');
+                hashInput.name = 'hashes';
+                hashInput.value = fileHash || '';
+                form.appendChild(hashInput);
+            }
+            
+            // Add form to document and submit
             document.body.appendChild(form);
             form.submit();
         });
 
-        // Taking a single file removal processing
+        // Single file deletion handler
         document.querySelectorAll('.delete-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const fileName = this.dataset.file;
                 const formId = this.dataset.form;
                 
-                // Setting up a modal window to delete one file
+                // Setup modal for single file deletion
                 deletePromptSingle.style.display = 'block';
                 deletePromptMultiple.style.display = 'none';
-                filesToDeleteList.style.display = 'block'; // Показываем список файлов
+                filesToDeleteList.style.display = 'block'; // Show file list
                 fileNameToDelete.textContent = fileName;
                 
-                // Отображаем один файл в списке
+                // Show single file in list
                 filesToDeleteList.innerHTML = '';
                 const listItem = document.createElement('div');
                 listItem.innerHTML = `<i class="bi bi-file-earmark me-1"></i> ${fileName}`;
                 filesToDeleteList.appendChild(listItem);
                 
-                // Reset the previous handlers and add a new
+                // Reset previous handlers and add new one
                 const newConfirmBtn = confirmDeleteBtn.cloneNode(true);
                 confirmDeleteBtn.replaceWith(newConfirmBtn);
-                newConfirmBtn.addEventListener('click', function() {
+                newConfirmBtn.addEventListener('click', () => {
                     document.getElementById(formId).submit();
                     deleteModal.hide();
                 });
@@ -495,17 +494,17 @@
             });
         });
 
-        // Mass removal processing
-        bulkDeleteBtn.addEventListener('click', function() {
-            const filesList = Array.from(selectedFiles);
+        // Bulk deletion handler
+        bulkDeleteBtn.addEventListener('click', () => {
+            const filesList = Array.from(selectedFiles.keys());
             
-            // Setting up a modal window for mass removal
+            // Setup modal for bulk deletion
             deletePromptSingle.style.display = 'none';
             deletePromptMultiple.style.display = 'block';
             filesToDeleteList.style.display = 'block';
             deleteFilesCount.textContent = filesList.length;
             
-            // Добавляем список файлов для отображения
+            // Add files to display list
             filesToDeleteList.innerHTML = '';
             filesList.forEach(fileName => {
                 const listItem = document.createElement('div');
@@ -513,24 +512,24 @@
                 filesToDeleteList.appendChild(listItem);
             });
             
-            // Reset the previous handlers and add new for mass removal
+            // Reset previous handlers and add new one for bulk deletion
             const newConfirmBtn = confirmDeleteBtn.cloneNode(true);
             confirmDeleteBtn.replaceWith(newConfirmBtn);
-            newConfirmBtn.addEventListener('click', function() {
-                // Create a form for mass removal
+            newConfirmBtn.addEventListener('click', () => {
+                // Create form for bulk deletion
                 const form = document.createElement('form');
                 form.method = 'POST';
-                form.action = "{{ url_for('files.bulk_delete') }}";
+                form.action = "/bulk_delete";
                 
-                // Add a list of files to delete
-                selectedFiles.forEach(fileName => {
+                // Add files to delete
+                filesList.forEach(fileName => {
                     const input = document.createElement('input');
                     input.name = 'files';
                     input.value = fileName;
                     form.appendChild(input);
                 });
                 
-                // Add the form to the document and send
+                // Add form to document and submit
                 document.body.appendChild(form);
                 form.submit();
                 deleteModal.hide();
@@ -539,32 +538,32 @@
             deleteModal.show();
         });
 
-        // Click processing on a line/card for quick selection of a file
+        // Click handler on row/card for quick file selection
         document.querySelectorAll('.file-item').forEach(item => {
-            // For the lines of the table
+            // For table rows
             if (item.nodeName === 'TR') {
-                // We make the line of the table clickable, excluding the actions buttons
+                // Make table row clickable, excluding action buttons
                 const cells = item.querySelectorAll('td:not(:last-child)');
                 cells.forEach(cell => {
-                    cell.addEventListener('click', function(e) {
-                        // We check that the click was not according to the checkbox (he has his own handler)
+                    cell.addEventListener('click', (e) => {
+                        // Check click wasn't on checkbox (it has its own handler)
                         if (e.target.type !== 'checkbox' && !e.target.closest('.form-check')) {
                             const checkbox = item.querySelector('.file-checkbox');
                             if (checkbox) {
                                 checkbox.checked = !checkbox.checked;
-                                // Call the Change event for processing a file selection
+                                // Trigger change event to handle file selection
                                 checkbox.dispatchEvent(new Event('change'));
                             }
                         }
                     });
                 });
             }
-            // For cards in grid mode
+            // For cards in grid view
             else {
                 const card = item.querySelector('.card');
                 if (card) {
-                    card.addEventListener('click', function(e) {
-                        // Ignore the clicks by checkbox, buttons and other interactive elements
+                    card.addEventListener('click', (e) => {
+                        // Ignore clicks on checkbox, buttons and other interactive elements
                         if (!e.target.closest('.form-check') && 
                             !e.target.closest('.btn') && 
                             !e.target.closest('a') && 
@@ -572,7 +571,7 @@
                             const checkbox = item.querySelector('.file-checkbox');
                             if (checkbox) {
                                 checkbox.checked = !checkbox.checked;
-                                // Call the Change event for processing a file selection
+                                // Trigger change event to handle file selection
                                 checkbox.dispatchEvent(new Event('change'));
                             }
                         }
@@ -581,84 +580,68 @@
             }
         });
         
-        // Switching type (table/grid)
+        // View toggle (table/grid)
         if (toggleViewBtn) {
             toggleViewBtn.addEventListener('click', function() {
                 const currentView = this.getAttribute('data-view');
                 if (currentView === 'table') {
-                    // Switching to grid
+                    // Switch to grid
                     tableView.style.display = 'none';
                     gridView.style.display = 'flex';
                     this.setAttribute('data-view', 'grid');
-                    this.innerHTML = `<i class="bi bi-table"></i> {{ _('List View') }}`;
+                    this.innerHTML = `<i class="bi bi-table"></i> List View`;
                     localStorage.setItem('fileViewPreference', 'grid');
                 } else {
-                    // Switching to the table
+                    // Switch to table
                     tableView.style.display = 'block';
                     gridView.style.display = 'none';
                     this.setAttribute('data-view', 'table');
-                    this.innerHTML = `<i class="bi bi-grid"></i> {{ _('Card View') }}`;
+                    this.innerHTML = `<i class="bi bi-grid"></i> Card View`;
                     localStorage.setItem('fileViewPreference', 'table');
                 }
             });
             
-            // Restoration of preferences from Localstorage, taking into account the type of device
+            // Restore preferences from localStorage, considering device type
             const viewPreference = localStorage.getItem('fileViewPreference');
-            // We determine whether the device is mobile
+            // Determine if device is mobile
             const isMobile = window.matchMedia('(max-width: 767px)').matches;
 
-            // If the user does not have saved preferences, we set the default view depending on the device
+            // If user has no saved preferences, set default view based on device
             if (!viewPreference) {
-                // For mobile - tiles, for the rest - table
+                // Mobile - grid, others - table
                 if (isMobile) {
                     localStorage.setItem('fileViewPreference', 'grid');
                     tableView.style.display = 'none';
                     gridView.style.display = 'flex';
                     toggleViewBtn.setAttribute('data-view', 'grid');
-                    toggleViewBtn.innerHTML = `<i class="bi bi-table"></i>  {{ _('List View') }}`;
+                    toggleViewBtn.innerHTML = `<i class="bi bi-table"></i> List View`;
                 }
             } else {
-                // If there are saved preferences, we use them
+                // If there are saved preferences, use them
                 if (viewPreference === 'grid') {
                     toggleViewBtn.click();
                 }
             }
         }
         
-        // Function for updating the display of the file counter
-        function updateFilesCounter() {
+        // Function to update file counter display
+        const updateFilesCounter = () => {
             const visibleItems = document.querySelectorAll('.file-item:not([style*="display: none"])').length;
             const totalItems = fileItems.length;
             
             if (filesCounter) {
                 if (visibleItems < totalItems) {
-                    filesCounter.textContent = `{{ _('Showing') }} ${visibleItems} {{ _('of') }} ${totalItems}`;
+                    filesCounter.textContent = `Showing ${visibleItems} of ${totalItems}`;
                     filesCounter.className = 'badge bg-warning text-dark';
                 } else {
-                    filesCounter.textContent = `{{ _('Total files') }}: ${totalItems}`;
+                    filesCounter.textContent = `Total files: ${totalItems}`;
                     filesCounter.className = 'badge bg-secondary';
                 }
             }
-        }
+        };
         
-        // File selection function
-        function toggleFileSelection(fileItem) {
-            const fileName = fileItem.dataset.filename;
-            
-            if (selectedFiles.has(fileName)) {
-                selectedFiles.delete(fileName);
-                fileItem.classList.remove('selected-file');
-            } else {
-                selectedFiles.add(fileName);
-                fileItem.classList.add('selected-file');
-            }
-            
-            // Update UI elements of mass actions
-            updateBulkActionUI();
-        }
-
         // File search function
-        function searchFiles() {
+        const searchFiles = () => {
             const searchTerm = fileSearch.value.toLowerCase();
             let foundAny = false;
             
@@ -674,28 +657,28 @@
                 }
             });
             
-            // Show the message if nothing is found
+            // Show message if nothing found
             if (emptySearchResult) {
                 emptySearchResult.style.display = foundAny ? 'none' : 'block';
             }
             
-            // Update the file counter
+            // Update file counter
             updateFilesCounter();
-        }
+        };
 
-        // Search events for events
+        // Search events setup
         if (fileSearch) {
             fileSearch.addEventListener('input', searchFiles);
             
             if (clearSearch) {
-                clearSearch.addEventListener('click', function() {
+                clearSearch.addEventListener('click', () => {
                     fileSearch.value = '';
                     searchFiles();
                 });
             }
             
             if (resetSearch) {
-                resetSearch.addEventListener('click', function(e) {
+                resetSearch.addEventListener('click', (e) => {
                     e.preventDefault();
                     fileSearch.value = '';
                     searchFiles();
@@ -703,7 +686,7 @@
             }
         }
 
-        // Sorting the table
+        // Table sorting
         const sortButtons = document.querySelectorAll('.sortable');
         sortButtons.forEach(button => {
             button.addEventListener('click', function() {
@@ -711,16 +694,16 @@
                 const tbody = document.querySelector('tbody');
                 const rows = Array.from(document.querySelectorAll('tbody .file-item'));
 
-                // Determine the current direction before cleaning classes
+                // Determine current direction before clearing classes
                 const wasSortedAsc = this.classList.contains('sort-asc');
                 const wasSortedDesc = this.classList.contains('sort-desc');
                 
-                // Clean the previous sorting classes
+                // Clear previous sorting classes
                 document.querySelectorAll('.sortable').forEach(el => {
                     el.classList.remove('sort-asc', 'sort-desc');
                 });
                 
-                // We determine the direction of sorting
+                // Determine sort direction
                 let sortDirection;
                 if (wasSortedAsc) {
                     sortDirection = 'desc';
@@ -730,24 +713,24 @@
                     this.classList.add('sort-asc');
                 }
                 
-                // Function for obtaining a value from the sorting cell
-                function getCellValue(row, index) {
+                // Function to get value from sort cell
+                const getCellValue = (row, index) => {
                     return row.children[index].innerText || row.children[index].textContent;
-                }
+                };
                 
-                // Function for obtaining the size in bytes
-                function getSizeInBytes(sizeStr) {
+                // Function to get size in bytes
+                const getSizeInBytes = (sizeStr) => {
                     if (!sizeStr) return 0;
                     const value = parseFloat(sizeStr);
-                    if (sizeStr.includes("{{ _('MB') }}")) return value * 1024 * 1024;
-                    if (sizeStr.includes("{{ _('KB') }}")) return value * 1024;
+                    if (sizeStr.includes("MB")) return value * 1024 * 1024;
+                    if (sizeStr.includes("KB")) return value * 1024;
                     return value;
-                }
+                };
                 
                 // Date parsing function
-                function parseDate(dateStr) {
+                const parseDate = (dateStr) => {
                     if (!dateStr) return new Date(0);
-                    // We assume the format dd.mm.yyy hh:mm:ss or similar
+                    // Assume format dd.mm.yyyy hh:mm:ss or similar
                     const parts = dateStr.split(' ');
                     if (parts.length === 2) {
                         const dateParts = parts[0].split('.');
@@ -757,7 +740,7 @@
                             // Day, Month (0-11), Year, Hours, Minutes, Seconds
                             return new Date(
                                 parseInt(dateParts[2]), // Year
-                                parseInt(dateParts[1]) - 1, // Month (отсчет от 0)
+                                parseInt(dateParts[1]) - 1, // Month (0-based)
                                 parseInt(dateParts[0]), // Day
                                 parseInt(timeParts[0]), // Hours
                                 parseInt(timeParts[1]), // Minutes
@@ -766,11 +749,11 @@
                         }
                     }
                     
-                    // If the format does not correspond to the expected, we try to parse as usual
+                    // If format doesn't match expected, try standard parsing
                     return new Date(dateStr);
-                }
+                };
                 
-                // Determine the column index and data type
+                // Determine column index and data type
                 let columnIndex;
                 let dataType;
                 
@@ -788,12 +771,12 @@
                     dataType = 'text';
                 }
                 
-                // Sort lines
+                // Sort rows
                 rows.sort((rowA, rowB) => {
                     let a = getCellValue(rowA, columnIndex);
                     let b = getCellValue(rowB, columnIndex);
                     
-                    // We convert values ​​depending on the type of data
+                    // Convert values based on data type
                     if (dataType === 'size') {
                         a = getSizeInBytes(a);
                         b = getSizeInBytes(b);
@@ -805,7 +788,7 @@
                         b = b.toLowerCase();
                     }
                     
-                    // Compare the values
+                    // Compare values
                     if (sortDirection === 'asc') {
                         if (a < b) return -1;
                         if (a > b) return 1;
@@ -817,53 +800,37 @@
                     }
                 });
                 
-                // Remonstrate the table
+                // Rerender table
                 rows.forEach(row => tbody.appendChild(row));
             });
         });
 
-        // Processing processor of viewing buttons
+        // Preview buttons handler
         document.querySelectorAll('.preview-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const fileName = this.dataset.file;
+                const fileHash = this.dataset.hash;
                 
-                // Найти хеш в ближайшей ссылке для скачивания
-                const fileItem = this.closest('.file-item');
-                let fileHash = '';
-                
-                if (fileItem) {
-                    const downloadLink = fileItem.querySelector('a[href*="download_file"]');
-                    if (downloadLink) {
-                        const url = new URL(downloadLink.href);
-                        fileHash = url.pathname.split('/').pop(); // Получаем последний сегмент URL, который является хешем
-                    }
-                }
-                
-                if (!fileHash) {
-                    console.error('Не удалось найти хеш для файла:', fileName);
-                    return;
-                }
-                
-                const fileUrl = "{{ url_for('files.download_file', filename='', file_hash='') }}".replace('//', '/') + fileName + '/' + fileHash;
+                const fileUrl = `/download/${fileName}/${fileHash}`;
                 const previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
                 const previewModalLabel = document.getElementById('previewModalLabel');
                 const previewModalBody = document.getElementById('previewModalBody');
                 const previewDownloadBtn = document.getElementById('previewDownloadBtn');
                 
-                previewModalLabel.textContent = "{{ _('View') }}: " + fileName;
+                previewModalLabel.textContent = `Preview: ${fileName}`;
                 previewModalBody.innerHTML = '';
                 previewDownloadBtn.href = fileUrl;
                 
-                // Проверяем расширение файла
+                // Check file extension
                 if (/\.(jpe?g|png|gif|webp|svg)$/i.test(fileName)) {
-                    // Для изображений
+                    // For images
                     const img = document.createElement('img');
                     img.src = fileUrl;
                     img.className = 'img-fluid';
                     img.style.maxHeight = '70vh';
                     previewModalBody.appendChild(img);
                     
-                    // Добавляем возможность увеличения для изображений
+                    // Add zoom functionality for images
                     img.addEventListener('click', function() {
                         if (this.classList.contains('zoomed')) {
                             this.classList.remove('zoomed');
@@ -877,9 +844,9 @@
                     });
                     img.style.cursor = 'zoom-in';
                 } else if (/\.pdf$/i.test(fileName)) {
-                    // Для PDF
+                    // For PDFs
                     const frame = document.createElement('iframe');
-                    frame.src = fileUrl + '?preview=true';
+                    frame.src = `${fileUrl}?preview=true`;
                     frame.width = '100%';
                     frame.height = '500px';
                     frame.frameBorder = '0';
@@ -890,7 +857,7 @@
             });
         });
 
-        // // Add styles for pre examination on mobile devices
+        // Add styles for preview on mobile devices
         if (window.matchMedia('(max-width: 767px)').matches) {
             const style = document.createElement('style');
             style.textContent = `
