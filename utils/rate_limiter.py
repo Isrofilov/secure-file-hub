@@ -17,7 +17,7 @@ class RateLimiter:
 
     def add_attempt(self, ip, success=False):
         current_time = time.time()
-        with self.lock:  # Используем контекстный менеджер
+        with self.lock:  # We use the context manager
             if ip not in self.attempts:
                 self.attempts[ip] = []
             self.attempts[ip].append((current_time, success))
@@ -25,7 +25,7 @@ class RateLimiter:
 
     def is_rate_limited(self, ip):
         current_time = time.time()
-        with self.lock:  # Используем контекстный менеджер
+        with self.lock:  # We use the context manager
             self._cleanup(ip)
             if ip not in self.attempts:
                 return False
@@ -37,7 +37,7 @@ class RateLimiter:
             if ip not in self.attempts:
                 return 0
                 
-            # Проверяем лимит прямо здесь, не вызывая is_rate_limited()
+            # Check the limit right here without causing is_rate_limited ()
             failed_attempts = [t for t, s in self.attempts[ip] if not s]
             if len(failed_attempts) < self.max_attempts:
                 return 0

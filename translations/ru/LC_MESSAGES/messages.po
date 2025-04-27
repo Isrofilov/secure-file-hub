@@ -8,8 +8,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-03-22 06:09+0300\n"
-"PO-Revision-Date: 2025-03-22 06:10+0300\n"
+"POT-Creation-Date: 2025-04-27 17:53+0300\n"
+"PO-Revision-Date: 2025-04-27 17:54+0300\n"
 "Last-Translator: Artyom Isrofilov <artyom@isrofilov.ru>\n"
 "Language-Team: \n"
 "Language: ru\n"
@@ -66,133 +66,137 @@ msgstr "Метод не разрешен"
 msgid "Unauthorized access"
 msgstr "Неавторизованный доступ"
 
-#: routes/file_routes.py:32 templates/upload.html:87
+#: routes/error_routes.py:28
+msgid "The link is out of date"
+msgstr "Ссылка устарела"
+
+#: routes/file_routes.py:34 templates/upload.html:104
 msgid "B"
 msgstr "Б"
 
-#: routes/file_routes.py:34 templates/files.html:725 templates/upload.html:89
+#: routes/file_routes.py:36 templates/upload.html:106
 msgid "KB"
 msgstr "КБ"
 
-#: routes/file_routes.py:36 templates/files.html:724 templates/upload.html:91
+#: routes/file_routes.py:38 templates/upload.html:108
 msgid "MB"
 msgstr "МБ"
 
-#: routes/file_routes.py:113 routes/file_routes.py:178
+#: routes/file_routes.py:116 routes/file_routes.py:181
 msgid "File successfully uploaded"
 msgstr "Файл успешно загружен"
 
-#: routes/file_routes.py:113 routes/file_routes.py:178
+#: routes/file_routes.py:116 routes/file_routes.py:181
 msgid "files uploaded"
 msgstr "файлов загружено"
 
-#: routes/file_routes.py:220
+#: routes/file_routes.py:243
 msgid "No files selected for download"
 msgstr "Не выбраны файлы для скачивания"
 
-#: routes/file_routes.py:257
+#: routes/file_routes.py:280
 msgid "An error occurred while preparing files for download"
 msgstr "Произошла ошибка при подготовке файлов к скачиванию"
 
-#: routes/file_routes.py:267 routes/file_routes.py:269
+#: routes/file_routes.py:290 routes/file_routes.py:292
 msgid "File"
 msgstr "Файл"
 
-#: routes/file_routes.py:267
+#: routes/file_routes.py:290
 msgid "deleted"
 msgstr "удалён"
 
-#: routes/file_routes.py:269
+#: routes/file_routes.py:292
 msgid "not found"
 msgstr "не найден"
 
-#: routes/file_routes.py:272
+#: routes/file_routes.py:295
 msgid "Error deleting file"
 msgstr "Ошибка при удалении файла"
 
-#: routes/file_routes.py:284
+#: routes/file_routes.py:307
 msgid "No files selected for deletion"
 msgstr "Не выбраны файлы для удаления"
 
-#: routes/file_routes.py:305
+#: routes/file_routes.py:328
 msgid "Successfully deleted"
 msgstr "Успешно удалено"
 
-#: routes/file_routes.py:305 routes/file_routes.py:307
-#: templates/upload.html:103
+#: routes/file_routes.py:328 routes/file_routes.py:330
+#: templates/upload.html:224
 msgid "files"
 msgstr "файлов"
 
-#: routes/file_routes.py:307
+#: routes/file_routes.py:330
 msgid "Deleted"
 msgstr "Удалено"
 
-#: routes/file_routes.py:307
+#: routes/file_routes.py:330
 msgid "files, failed to delete"
 msgstr "файлов, не удалось удалить"
 
-#: routes/file_routes.py:309
+#: routes/file_routes.py:332
 msgid "Failed to delete selected files"
 msgstr "Не удалось удалить выбранные файлы"
 
-#: routes/file_routes.py:315
+#: routes/file_routes.py:338
 msgid "An error occurred while deleting files"
 msgstr "Произошла ошибка при удалении файлов"
 
-#: templates/base.html:6 templates/base.html:191
+#: templates/base.html:6 templates/base.html:193
 msgid "Secure File Hub"
 msgstr "Secure File Hub"
 
-#: templates/base.html:198
+#: templates/base.html:200
 msgid "Files"
 msgstr "Файлы"
 
-#: templates/base.html:201 templates/files.html:197 templates/upload.html:36
-#: templates/upload.html:103 templates/upload.html:157
+#: templates/base.html:203 templates/files.html:197 templates/upload.html:38
+#: templates/upload.html:224 templates/upload.html:233
 msgid "Upload"
 msgstr "Загрузить"
 
-#: templates/base.html:207
+#: templates/base.html:209
 msgid "Language"
 msgstr "Язык"
 
-#: templates/base.html:216
+#: templates/base.html:218
 msgid "Login time"
 msgstr "Время входа"
 
-#: templates/base.html:219 templates/base.html:359
+#: templates/base.html:221 templates/base.html:361
 msgid "Logout"
 msgstr "Выйти"
 
-#: templates/base.html:231 templates/base.html:239 templates/base.html:316
+#: templates/base.html:233 templates/base.html:241 templates/base.html:318
 msgid "Confirm"
 msgstr "Подтверждение"
 
-#: templates/base.html:235
+#: templates/base.html:237
 msgid "Are you sure you want to perform this action?"
 msgstr "Вы уверены, что хотите выполнить это действие?"
 
-#: templates/base.html:238 templates/files.html:222 templates/upload.html:37
+#: templates/base.html:240 templates/files.html:222 templates/upload.html:39
 msgid "Cancel"
 msgstr "Отмена"
 
-#: templates/base.html:250 templates/base.html:303
+#: templates/base.html:252 templates/base.html:305
 msgid "Notification"
 msgstr "Уведомление"
 
-#: templates/base.html:254
+#: templates/base.html:256
 msgid "Information message"
 msgstr "Информационное сообщение"
 
-#: templates/base.html:257
+#: templates/base.html:259
 msgid "OK"
 msgstr "ОК"
 
-#: templates/base.html:281
+#: templates/base.html:283
 msgid "Page generation time"
 msgstr "Время генерации страницы"
 
-#: templates/base.html:355
+#: templates/base.html:357
 msgid "Do you really want to log out?"
 msgstr "Вы действительно хотите выйти?"
 
@@ -233,7 +237,7 @@ msgstr "Список файлов"
 msgid "Upload files"
 msgstr "Загрузить файлы"
 
-#: templates/files.html:12 templates/files.html:582
+#: templates/files.html:12 templates/files.html:599
 msgid "Card View"
 msgstr "Плитка"
 
@@ -241,7 +245,7 @@ msgstr "Плитка"
 msgid "Search for files"
 msgstr "Поиск файлов"
 
-#: templates/files.html:27 templates/files.html:620
+#: templates/files.html:27
 msgid "Total files"
 msgstr "Всего файлов"
 
@@ -284,7 +288,7 @@ msgid "Actions"
 msgstr "Действия"
 
 #: templates/files.html:107 templates/files.html:108 templates/files.html:110
-#: templates/files.html:177 templates/upload.html:25
+#: templates/files.html:177 templates/upload.html:27
 msgid "Preview"
 msgstr "Просмотр"
 
@@ -332,21 +336,9 @@ msgstr "Скачать файл"
 msgid "Close"
 msgstr "Закрыть"
 
-#: templates/files.html:575 templates/files.html:600
+#: templates/files.html:592 templates/files.html:617
 msgid "List View"
-msgstr "Список"
-
-#: templates/files.html:617
-msgid "Showing"
-msgstr "Показано"
-
-#: templates/files.html:617
-msgid "of"
-msgstr "из"
-
-#: templates/files.html:817
-msgid "View"
-msgstr "Просмотр"
+msgstr "Таблица"
 
 #: templates/login.html:7 templates/login.html:17
 msgid "Login"
@@ -376,46 +368,50 @@ msgstr "Вернуться к списку"
 msgid "Select files to upload"
 msgstr "Выберите файлы для загрузки"
 
-#: templates/upload.html:18
+#: templates/upload.html:20
 msgid "Drag files here"
 msgstr "Перетащите файлы сюда"
 
-#: templates/upload.html:19
+#: templates/upload.html:21
 msgid "or select files via the button above"
 msgstr "или выберите файлы через кнопку выше"
 
-#: templates/upload.html:102
+#: templates/upload.html:116
+msgid "Alert"
+msgstr "Уведомление"
+
+#: templates/upload.html:223
 msgid "Upload 1 file"
 msgstr "Загрузить 1 файл"
 
-#: templates/upload.html:173
+#: templates/upload.html:246
 msgid "Please select files to upload"
 msgstr "Пожалуйста, выберите файлы для загрузки"
 
-#: templates/upload.html:202
+#: templates/upload.html:275
 msgid "Upload completed"
 msgstr "Загрузка завершена"
 
-#: templates/upload.html:208
+#: templates/upload.html:279
 msgid "An error occurred while uploading files"
 msgstr "Произошла ошибка при загрузке файлов"
 
-#: templates/upload.html:208
+#: templates/upload.html:279
 msgid "Upload error"
 msgstr "Ошибка загрузки"
 
-#: templates/upload.html:215
+#: templates/upload.html:286
 msgid "Network error while uploading files"
 msgstr "Ошибка сети при загрузке файлов"
 
-#: templates/upload.html:215
+#: templates/upload.html:286
 msgid "Connection error"
 msgstr "Ошибка соединения"
 
-#: templates/upload.html:221
+#: templates/upload.html:292
 msgid "Upload was interrupted"
 msgstr "Загрузка была прервана"
 
-#: templates/upload.html:221
+#: templates/upload.html:292
 msgid "Upload canceled"
 msgstr "Загрузка отменена"

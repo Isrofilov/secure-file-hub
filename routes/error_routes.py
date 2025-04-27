@@ -22,3 +22,7 @@ def method_not_allowed_error(error):
 @errors_bp.app_errorhandler(401)
 def unauthorized_error(error):
     return render_template('error.html', error_code=401, error_message=_("Unauthorized access")), 401
+
+@errors_bp.app_errorhandler(410)
+def gone_error(error):
+    return render_template('error.html', error_code=410, error_message=_("The link is out of date")), 410

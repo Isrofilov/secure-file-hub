@@ -589,14 +589,14 @@
                     tableView.style.display = 'none';
                     gridView.style.display = 'flex';
                     this.setAttribute('data-view', 'grid');
-                    this.innerHTML = `<i class="bi bi-table"></i> List View`;
+                    this.innerHTML = `<i class="bi bi-table"></i> {{ _('List View') }}`;
                     localStorage.setItem('fileViewPreference', 'grid');
                 } else {
                     // Switch to table
                     tableView.style.display = 'block';
                     gridView.style.display = 'none';
                     this.setAttribute('data-view', 'table');
-                    this.innerHTML = `<i class="bi bi-grid"></i> Card View`;
+                    this.innerHTML = `<i class="bi bi-grid"></i> {{ _('Card View') }}`;
                     localStorage.setItem('fileViewPreference', 'table');
                 }
             });
@@ -614,7 +614,7 @@
                     tableView.style.display = 'none';
                     gridView.style.display = 'flex';
                     toggleViewBtn.setAttribute('data-view', 'grid');
-                    toggleViewBtn.innerHTML = `<i class="bi bi-table"></i> List View`;
+                    toggleViewBtn.innerHTML = `<i class="bi bi-table"></i> {{ _('List View') }}`;
                 }
             } else {
                 // If there are saved preferences, use them

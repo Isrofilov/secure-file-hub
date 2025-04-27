@@ -7,6 +7,7 @@ from utils.hash_url import generate_download_hash
 from utils.logging_config import configure_logging
 import logging
 import os
+import time
 import urllib.parse
 import tempfile
 import zipfile
@@ -185,11 +186,21 @@ def upload_bypass():
 @files_bp.route('/download/<filename>/<file_hash>')
 def download_file(filename, file_hash):
     try:
-        # Проверяем валидность хеша
-        expected_hash = generate_download_hash(filename, current_app.config['SECRET_KEY'])
-        if file_hash != expected_hash:
-            logger.warning(f"Invalid hash attempt for file: {filename}")
-            abort(403)  # Forbidden
+        # Divide the hash and validity period
+        signature, expiration = file_hash.split('-')
+        
+        # We check the validity period
+        current_time = int(time.time())
+        if current_time > int(expiration):
+            abort(410)
+        
+        # We generate a hash again for verification
+        expected_hash = generate_download_hash(filename, current_app.config['SECRET_KEY'], expires_at=int(expiration))
+        expected_signature = expected_hash.split('-')[0]
+        
+        # Compare hashs
+        if signature != expected_signature:
+            abort(403)
         
         preview_mode = request.args.get('preview', 'false').lower() == 'true'
         
@@ -207,7 +218,7 @@ def download_file(filename, file_hash):
         )
         
         if filename.lower().endswith('.pdf'):
-            # Кодирование имени файла в заголовке Content-Disposition
+            # Coding the file name in the Content-Disposition title
             encoded_filename = urllib.parse.quote(filename)
             
             if preview_mode:

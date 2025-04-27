@@ -12,11 +12,13 @@
                 <label for="file" class="form-label">{{ _('Select files to upload') }}</label>
                 <input class="form-control" type="file" id="file" name="file" multiple>
             </div>
-            <div class="mb-3 mt-4">
-                <div class="dropzone border border-dashed border-primary rounded p-5 text-center" id="dropZone">
-                    <i class="bi bi-cloud-arrow-up fs-1 text-primary"></i>
-                    <p class="mt-2">{{ _('Drag files here') }}</p>
-                    <p class="text-muted small">{{ _('or select files via the button above') }}</p>
+            
+            <!-- Responsive dropzone - hide on mobile -->
+            <div class="mb-3 mt-3 d-none d-md-block">
+                <div class="dropzone border border-dashed border-primary rounded text-center" id="dropZone">
+                    <i class="bi bi-cloud-arrow-up text-primary d-block"></i>
+                    <p class="mb-0">{{ _('Drag files here') }}</p>
+                    <p class="text-muted d-none d-md-block">{{ _('or select files via the button above') }}</p>
                 </div>
             </div>
             
@@ -43,234 +45,282 @@
 
 {% block scripts %}
 <script>
-    // We get DOM elements
-    const fileInput = document.getElementById('file');
-    const uploadForm = document.getElementById('uploadForm');
-    const uploadButton = document.getElementById('uploadButton');
-    const progressContainer = document.getElementById('progressContainer');
-    const progressBar = document.getElementById('progressBar');
-    const filePreviewContainer = document.getElementById('filePreviewContainer');
-    const filePreview = document.getElementById('filePreview');
-    
-    // Function for checking whether the file is the image
-    function isImage(file) {
-        const imageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp', 'image/bmp'];
-        return imageTypes.includes(file.type);
-    }
-    
-    // Function for obtaining an icon depending on the type of file
-    function getFileIcon(file) {
-        const fileType = file.type;
-        
-        if (fileType.startsWith('image/')) {
-            return 'bi-file-earmark-image';
-        } else if (fileType === 'application/pdf') {
-            return 'bi-file-earmark-pdf';
-        } else if (fileType.includes('spreadsheet') || fileType.includes('excel')) {
-            return 'bi-file-earmark-excel';
-        } else if (fileType.includes('document') || fileType.includes('word')) {
-            return 'bi-file-earmark-word';
-        } else if (fileType.includes('presentation') || fileType.includes('powerpoint')) {
-            return 'bi-file-earmark-ppt';
-        } else if (fileType.startsWith('text/')) {
-            return 'bi-file-earmark-text';
-        } else if (fileType.includes('zip') || fileType.includes('compressed')) {
-            return 'bi-file-earmark-zip';
-        } else {
-            return 'bi-file-earmark';
-        }
-    }
-    
-    // Function for formatting file size
-    function formatFileSize(bytes) {
-        if (bytes < 1024) {
-            return bytes + " {{ _('B') }}";
-        } else if (bytes < 1024 * 1024) {
-            return (bytes / 1024).toFixed(1) + " {{ _('KB') }}";
-        } else {
-            return (bytes / (1024 * 1024)).toFixed(1) + " {{ _('MB') }}";
-        }
-    }
-    
-    // File selection processing
-    fileInput.addEventListener('change', function(e) {
-        const files = e.target.files;
-        filePreview.innerHTML = '';
-        
-        if (files.length > 0) {
-            uploadButton.textContent = files.length === 1 
-                ? `{{ _('Upload 1 file') }}` 
-                : `{{ _('Upload') }} ${files.length} {{ _('files') }}`;
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize file upload module
+        const FileUploader = (function() {
+            // DOM elements
+            const elements = {
+                fileInput: document.getElementById('file'),
+                uploadForm: document.getElementById('uploadForm'),
+                uploadButton: document.getElementById('uploadButton'),
+                progressContainer: document.getElementById('progressContainer'),
+                progressBar: document.getElementById('progressBar'),
+                filePreviewContainer: document.getElementById('filePreviewContainer'),
+                filePreview: document.getElementById('filePreview'),
+                dropZone: document.getElementById('dropZone')
+            };
             
-            filePreviewContainer.classList.remove('d-none');
+            // File type constants
+            const fileTypes = {
+                image: ['image/jpeg', 'image/png', 'image/gif', 'image/svg+xml', 'image/webp', 'image/bmp'],
+                pdf: ['application/pdf'],
+                excel: ['application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+                word: ['application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+                powerpoint: ['application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+                text: ['text/plain', 'text/html', 'text/css', 'text/javascript'],
+                archive: ['application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed']
+            };
             
-            // Create a preview for each file
-            Array.from(files).forEach(file => {
-                const previewCol = document.createElement('div');
-                previewCol.className = 'col-12 col-md-6 col-lg-4';
+            // Utility functions
+            const utils = {
+                isImage: function(file) {
+                    return fileTypes.image.includes(file.type);
+                },
                 
-                const previewCard = document.createElement('div');
-                previewCard.className = 'card h-100';
+                getFileIcon: function(file) {
+                    const fileType = file.type;
+                    
+                    if (fileTypes.image.some(type => fileType.includes(type.split('/')[1]))) {
+                        return 'bi-file-earmark-image';
+                    } else if (fileTypes.pdf.includes(fileType)) {
+                        return 'bi-file-earmark-pdf';
+                    } else if (fileTypes.excel.some(type => fileType.includes('excel') || fileType.includes('spreadsheet'))) {
+                        return 'bi-file-earmark-excel';
+                    } else if (fileTypes.word.some(type => fileType.includes('word') || fileType.includes('document'))) {
+                        return 'bi-file-earmark-word';
+                    } else if (fileTypes.powerpoint.some(type => fileType.includes('powerpoint') || fileType.includes('presentation'))) {
+                        return 'bi-file-earmark-ppt';
+                    } else if (fileTypes.text.some(type => fileType.startsWith('text/'))) {
+                        return 'bi-file-earmark-text';
+                    } else if (fileTypes.archive.some(type => fileType.includes('zip') || fileType.includes('compressed'))) {
+                        return 'bi-file-earmark-zip';
+                    } else {
+                        return 'bi-file-earmark';
+                    }
+                },
                 
-                const cardBody = document.createElement('div');
-                cardBody.className = 'card-body';
+                formatFileSize: function(bytes) {
+                    if (bytes < 1024) {
+                        return bytes + " {{ _('B') }}";
+                    } else if (bytes < 1024 * 1024) {
+                        return (bytes / 1024).toFixed(1) + " {{ _('KB') }}";
+                    } else {
+                        return (bytes / (1024 * 1024)).toFixed(1) + " {{ _('MB') }}";
+                    }
+                },
                 
-                // If the file is the image, show the miniature
-                if (isImage(file)) {
-                    const img = document.createElement('img');
-                    img.className = 'card-img-top mb-2';
-                    img.style.maxHeight = '120px';
-                    img.style.objectFit = 'contain';
-                    
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        img.src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                    
-                    previewCard.appendChild(img);
-                } else {
-                    // If not an image, show the icon
-                    const iconContainer = document.createElement('div');
-                    iconContainer.className = 'text-center mb-2';
-                    
-                    const icon = document.createElement('i');
-                    icon.className = `bi ${getFileIcon(file)} fs-1 text-primary`;
-                    
-                    iconContainer.appendChild(icon);
-                    previewCard.appendChild(iconContainer);
+                sleep: function(ms) {
+                    return new Promise(resolve => setTimeout(resolve, ms));
+                },
+                
+                showAlert: function(message, title = "{{ _('Alert') }}") {
+                    // Implementation depends on your alert system
+                    alert(message);
                 }
+            };
+            
+            // Drag and drop handlers
+            const dragAndDrop = {
+                preventDefaults: function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                },
                 
-                // File information
-                const fileInfo = document.createElement('div');
-                fileInfo.innerHTML = `
-                    <p class="card-text mb-1 text-truncate" title="${file.name}">${file.name}</p>
-                    <small class="text-muted">${formatFileSize(file.size)}</small>
-                `;
+                highlight: function() {
+                    elements.dropZone.classList.add('dropzone-highlight');
+                },
                 
-                cardBody.appendChild(fileInfo);
-                previewCard.appendChild(cardBody);
-                previewCol.appendChild(previewCard);
-                filePreview.appendChild(previewCol);
-            });
-        } else {
-            uploadButton.textContent = "{{ _('Upload') }}";
-            filePreviewContainer.classList.add('d-none');
-        }
+                unhighlight: function() {
+                    elements.dropZone.classList.remove('dropzone-highlight');
+                },
+                
+                handleDrop: function(e) {
+                    const files = e.dataTransfer.files;
+                    
+                    // Set files to input and trigger change event
+                    elements.fileInput.files = files;
+                    elements.fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                },
+                
+                init: function() {
+                    // Prevent default behavior
+                    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                        elements.dropZone.addEventListener(eventName, this.preventDefaults, false);
+                        document.body.addEventListener(eventName, this.preventDefaults, false);
+                    });
+                    
+                    // Highlight on drag over
+                    ['dragenter', 'dragover'].forEach(eventName => {
+                        elements.dropZone.addEventListener(eventName, this.highlight, false);
+                    });
+                    
+                    // Remove highlight on drag leave or drop
+                    ['dragleave', 'drop'].forEach(eventName => {
+                        elements.dropZone.addEventListener(eventName, this.unhighlight, false);
+                    });
+                    
+                    // Handle file drop
+                    elements.dropZone.addEventListener('drop', this.handleDrop, false);
+                }
+            };
+            
+            // File preview handlers
+            const filePreview = {
+                createPreview: function(file) {
+                    const previewCol = document.createElement('div');
+                    previewCol.className = 'col-6 col-md-4 col-lg-3';
+                    
+                    const previewCard = document.createElement('div');
+                    previewCard.className = 'card h-100';
+                    
+                    const cardBody = document.createElement('div');
+                    cardBody.className = 'card-body p-2';
+                    
+                    // Add image preview or file icon
+                    if (utils.isImage(file)) {
+                        const img = document.createElement('img');
+                        img.className = 'card-img-top mb-2';
+                        img.style.maxHeight = '100px';
+                        img.style.objectFit = 'contain';
+                        
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            img.src = e.target.result;
+                        };
+                        reader.readAsDataURL(file);
+                        
+                        previewCard.appendChild(img);
+                    } else {
+                        const iconContainer = document.createElement('div');
+                        iconContainer.className = 'text-center mb-2';
+                        
+                        const icon = document.createElement('i');
+                        icon.className = `bi ${utils.getFileIcon(file)} fs-1 text-primary`;
+                        
+                        iconContainer.appendChild(icon);
+                        previewCard.appendChild(iconContainer);
+                    }
+                    
+                    // File information
+                    const fileInfo = document.createElement('div');
+                    fileInfo.innerHTML = `
+                        <p class="card-text mb-1 text-truncate small" title="${file.name}">${file.name}</p>
+                        <small class="text-muted">${utils.formatFileSize(file.size)}</small>
+                    `;
+                    
+                    cardBody.appendChild(fileInfo);
+                    previewCard.appendChild(cardBody);
+                    previewCol.appendChild(previewCard);
+                    
+                    return previewCol;
+                },
+                
+                updatePreview: function(files) {
+                    elements.filePreview.innerHTML = '';
+                    
+                    if (files.length > 0) {
+                        elements.uploadButton.textContent = files.length === 1 
+                            ? `{{ _('Upload 1 file') }}` 
+                            : `{{ _('Upload') }} ${files.length} {{ _('files') }}`;
+                        
+                        elements.filePreviewContainer.classList.remove('d-none');
+                        
+                        // Create a preview for each file
+                        Array.from(files).forEach(file => {
+                            elements.filePreview.appendChild(this.createPreview(file));
+                        });
+                    } else {
+                        elements.uploadButton.textContent = "{{ _('Upload') }}";
+                        elements.filePreviewContainer.classList.add('d-none');
+                    }
+                }
+            };
+            
+            // Upload handlers
+            const uploader = {
+                handleSubmit: async function(e) {
+                    e.preventDefault();
+                    
+                    const files = elements.fileInput.files;
+                    if (files.length === 0) {
+                        utils.showAlert("{{ _('Please select files to upload') }}");
+                        return;
+                    }
+                    
+                    // Show progress indicator
+                    elements.progressContainer.classList.remove('d-none');
+                    
+                    // Create FormData and add files
+                    const formData = new FormData();
+                    Array.from(files).forEach(file => {
+                        formData.append('file', file);
+                    });
+                    
+                    // Create and configure AJAX request
+                    const xhr = new XMLHttpRequest();
+                    
+                    // Handle progress updates
+                    xhr.upload.addEventListener('progress', function(e) {
+                        if (e.lengthComputable) {
+                            const percentComplete = Math.round((e.loaded / e.total) * 100);
+                            elements.progressBar.style.width = percentComplete + '%';
+                            elements.progressBar.textContent = percentComplete + '%';
+                            elements.progressBar.setAttribute('aria-valuenow', percentComplete);
+                        }
+                    });
+                    
+                    // Handle request completion
+                    xhr.addEventListener('load', async function() {
+                        if (xhr.status === 200) {
+                            utils.showAlert("{{ _('Upload completed') }}");
+                            await utils.sleep(1500);
+                            window.location.href = "{{ url_for('files.files') }}";
+                        } else {
+                            utils.showAlert("{{ _('An error occurred while uploading files') }}", "{{ _('Upload error') }}");
+                            elements.progressContainer.classList.add('d-none');
+                        }
+                    });
+                    
+                    // Handle network errors
+                    xhr.addEventListener('error', function() {
+                        utils.showAlert("{{ _('Network error while uploading files') }}", "{{ _('Connection error') }}");
+                        elements.progressContainer.classList.add('d-none');
+                    });
+                    
+                    // Handle request abortion
+                    xhr.addEventListener('abort', function() {
+                        utils.showAlert("{{ _('Upload was interrupted') }}", "{{ _('Upload canceled') }}");
+                        elements.progressContainer.classList.add('d-none');
+                    });
+                    
+                    // Send request
+                    xhr.open('POST', '{% if UPLOAD_DOMAIN is defined and access_token is defined %}https://{{ UPLOAD_DOMAIN }}{{ url_for("files.upload_bypass") }}?access_token={{ access_token }}{% else %}{{ url_for("files.upload_file") }}{% endif %}', true);
+                    xhr.send(formData);
+                }
+            };
+            
+            // Initialize module
+            const init = function() {
+                // Set up file input change handler
+                elements.fileInput.addEventListener('change', function(e) {
+                    filePreview.updatePreview(e.target.files);
+                });
+                
+                // Set up form submit handler
+                elements.uploadForm.addEventListener('submit', uploader.handleSubmit);
+                
+                // Initialize drag and drop
+                dragAndDrop.init();
+            };
+            
+            // Public API
+            return {
+                init: init
+            };
+        })();
+        
+        // Initialize file uploader
+        FileUploader.init();
     });
-
-    // Sleep feature of promise
-    function sleep(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-
-    // Processing of sending the form
-    uploadForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const files = fileInput.files;
-        if (files.length === 0) {
-            showAlert("{{ _('Please select files to upload') }}");
-            return;
-        }
-        
-        // Show the progress indicator
-        progressContainer.classList.remove('d-none');
-        
-        // Create the FormData object and add files
-        const formData = new FormData();
-        Array.from(files).forEach(file => {
-            formData.append('file', file);
-        });
-        
-        // Create and set up AJAX request
-        const xhr = new XMLHttpRequest();
-        
-        // Progress progress processing
-        xhr.upload.addEventListener('progress', function(e) {
-            if (e.lengthComputable) {
-                const percentComplete = Math.round((e.loaded / e.total) * 100);
-                progressBar.style.width = percentComplete + '%';
-                progressBar.textContent = percentComplete + '%';
-                progressBar.setAttribute('aria-valuenow', percentComplete);
-            }
-        });
-        
-        // Processing the completion of the request
-        xhr.addEventListener('load', async function() {
-            if (xhr.status === 200) {
-                showAlert("{{ _('Upload completed') }}");
-                await sleep(2000);
-                // Successful download, redirect the files page
-                window.location.href = "{{ url_for('files.files') }}";
-            } else {
-                // Error processing use a modal window
-                showAlert("{{ _('An error occurred while uploading files') }}", "{{ _('Upload error') }}");
-                progressContainer.classList.add('d-none');
-            }
-        });
-        
-        // Network error processing
-        xhr.addEventListener('error', function() {
-            showAlert("{{ _('Network error while uploading files') }}", "{{ _('Connection error') }}");
-            progressContainer.classList.add('d-none');
-        });
-        
-        // Abort processing
-        xhr.addEventListener('abort', function() {
-            showAlert("{{ _('Upload was interrupted') }}", "{{ _('Upload canceled') }}");
-            progressContainer.classList.add('d-none');
-        });
-        
-        // We send a request
-        xhr.open('POST', '{% if UPLOAD_DOMAIN is defined and access_token is defined %}https://{{ UPLOAD_DOMAIN }}{{ url_for("files.upload_bypass") }}?access_token={{ access_token }}{% else %}{{ url_for("files.upload_file") }}{% endif %}', true);
-        xhr.send(formData);
-    });
-
-    // Drag and Drop Processing
-    const dropZone = document.getElementById('dropZone');
-
-    // Disable the default browser behavior when dragging files
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, preventDefaults, false);
-        document.body.addEventListener(eventName, preventDefaults, false);
-    });
-
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
-    // Highlighting a zone when dragging files over it
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, highlight, false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, unhighlight, false);
-    });
-
-    function highlight() {
-        dropZone.classList.add('dropzone-highlight');
-    }
-
-    function unhighlight() {
-        dropZone.classList.remove('dropzone-highlight');
-    }
-
-    // Processing dropped files
-    dropZone.addEventListener('drop', handleDrop, false);
-
-    function handleDrop(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        
-        // Install files in input
-        fileInput.files = files;
-        
-        // Generate a change event to handle the preview
-        const event = new Event('change', { bubbles: true });
-        fileInput.dispatchEvent(event);
-    }
 </script>
 {% endblock %}
