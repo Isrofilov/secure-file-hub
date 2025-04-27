@@ -2,7 +2,7 @@
 
 SecureFileHub is a lightweight, secure file manager built with Python/Flask, featuring two-factor authentication and a user-friendly interface.
 
-![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg) ![Python](https://img.shields.io/badge/python-3.11-green.svg) ![Flask](https://img.shields.io/badge/flask-3-green.svg) ![Bootstrap](https://img.shields.io/badge/bootstrap-5-green.svg)
+![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg) ![Python](https://img.shields.io/badge/python-3.13-green.svg) ![Flask](https://img.shields.io/badge/flask-3-green.svg) ![Bootstrap](https://img.shields.io/badge/bootstrap-5-green.svg)
 
 *[Русская версия](README.ru.md)*
 
