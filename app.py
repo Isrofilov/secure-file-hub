@@ -4,6 +4,7 @@ from flask_minify import Minify
 from flask_babel import Babel
 import time
 from datetime import datetime
+from flask import jsonify
 from config import SECRET_KEY, BABEL_SUPPORTED_LOCALES
 from utils.security import add_security_headers
 
@@ -38,6 +39,10 @@ def change_language(lang):
     if lang in BABEL_SUPPORTED_LOCALES:
         session['language'] = lang
     return redirect(request.referrer or url_for('files.files'))
+
+@app.route('/health')
+def health():
+    return jsonify(status='ok'), 200
 
 @app.before_request
 def before_request():

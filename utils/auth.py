@@ -1,7 +1,7 @@
 from functools import wraps
 from flask import session, redirect, url_for, request
+import hmac
 import logging
-from utils.logging_config import configure_logging
 import pyotp
 import re
 import ipaddress
@@ -91,7 +91,7 @@ def validate_backup_codes(backup_codes_str):
         logger.warning("BACKUP_CODES not configured in environment variables")
         return []
     
-    backup_code_pattern = re.compile(r'^[=0-9]{6}$')
+    backup_code_pattern = re.compile(r'^\d{6}$')
     valid_backup_codes = []
     
     for code in backup_codes:
@@ -101,7 +101,7 @@ def validate_backup_codes(backup_codes_str):
             logger.error(f"Invalid backup code: {code}")
     
     if len(valid_backup_codes) != len(backup_codes):
-        raise ValueError("Non-valid backup codes have been detected. Make sure the codes are 8 digits long.")
+        raise ValueError("Non-valid backup codes have been detected. Make sure the codes are 6 digits long.")
     
     return valid_backup_codes
 
@@ -111,7 +111,7 @@ def verify_totp(token, totp):
 
 def verify_backup_code(token, backup_codes):
     # Checks the validity of the backup code
-    return token in backup_codes
+    return any(hmac.compare_digest(token, code) for code in backup_codes)
 
 # Get Cloudflare IP List
 def get_cloudflare_ips():
@@ -153,6 +153,7 @@ def get_cloudflare_ips():
 def get_cloudflare_ips_with_caching():
     import json
     import os
+    import tempfile
     import time
     from datetime import datetime
 

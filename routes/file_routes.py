@@ -1,10 +1,10 @@
 from flask import Blueprint, request, render_template, redirect, send_file, url_for, flash, send_from_directory, abort, current_app
 from flask_babel import gettext as _, gettext
 from datetime import datetime, timezone
-from config import DEFAULT_TIMEZONE, DOMAIN, UPLOAD_DOMAIN, USE_CLOUDFLARE_BYPASS, IMAGE_PREVIEW_ENABLED
+from config import DEFAULT_TIMEZONE, DOMAIN, UPLOAD_DOMAIN, USE_CLOUDFLARE_BYPASS, IMAGE_PREVIEW_ENABLED, UPLOAD_FOLDER
 from utils.auth import login_required
 from utils.hash_url import generate_download_hash
-from utils.logging_config import configure_logging
+import hmac
 import logging
 import os
 import time
@@ -17,18 +17,24 @@ logger = logging.getLogger(__name__)
 # Create BluePrint for working with files
 files_bp = Blueprint('files', __name__)
 
+def _is_safe_path(filepath):
+    """Check that filepath stays within the upload folder (prevents path traversal)."""
+    real_upload = os.path.realpath(UPLOAD_FOLDER)
+    real_file = os.path.realpath(filepath)
+    return real_file.startswith(real_upload + os.sep) or real_file == real_upload
+
 @files_bp.route('/files')
 @login_required
 def files():
     files = []
-    for filename in os.listdir('uploads'):
-        filepath = os.path.join('uploads', filename)
+    for filename in os.listdir(UPLOAD_FOLDER):
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
         if os.path.isfile(filepath):
             file_size = os.path.getsize(filepath)
             file_time = os.path.getmtime(filepath)
             file_datetime = datetime.fromtimestamp(file_time).replace(tzinfo=timezone.utc).astimezone(DEFAULT_TIMEZONE)
             file_date = file_datetime.strftime('%d.%m.%Y %H:%M:%S')
-            
+
             # Converting the size of the file into a readable format
             if file_size < 1024:
                 size_str = f"{file_size} {gettext('B')}"
@@ -36,11 +42,11 @@ def files():
                 size_str = f"{file_size/1024:.1f} {gettext('KB')}"
             else:
                 size_str = f"{file_size/(1024*1024):.1f} {gettext('MB')}"
-            
+
             # Determination of the file type
             _, ext = os.path.splitext(filename)
             ext = ext.lower()
-            
+
             # Determine the type of extension file
             is_image = ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.tiff', '.ico']
             is_pdf = ext == '.pdf'
@@ -49,7 +55,7 @@ def files():
             is_archive = ext in ['.zip', '.rar', '.tar', '.gz', '.7z']
             is_video = ext in ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm']
             is_audio = ext in ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.wma']
-            
+
             # Add a file with additional attributes of type
             files.append({
                 'name': filename,
@@ -65,10 +71,10 @@ def files():
                 'is_video': is_video,
                 'is_audio': is_audio
             })
-    
+
     # Date file sorting (new on top)
     files.sort(key=lambda x: x['date'], reverse=True)
-    
+
     return render_template('files.html', files=files, IMAGE_PREVIEW_ENABLED=IMAGE_PREVIEW_ENABLED)
 
 @files_bp.route('/upload', methods=['GET', 'POST'])
@@ -78,47 +84,28 @@ def upload_file():
         # Check if there is a file in the request
         if 'file' not in request.files:
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return {'success': False, 'message': '_("No file selected")'}, 400
-            flash('_("No file selected")', 'danger')
+                return {'success': False, 'message': _("No file selected")}, 400
+            flash(_("No file selected"), 'danger')
             return redirect(request.url)
-        
+
         files = request.files.getlist('file')
-        
+
         if not files or files[0].filename == '':
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return {'success': False, 'message': '_("No file selected")'}, 400
-            flash('_("No file selected")', 'danger')
+                return {'success': False, 'message': _("No file selected")}, 400
+            flash(_("No file selected"), 'danger')
             return redirect(request.url)
-        
-        from utils.security import secure_filename_with_cyrillic
 
-        success_count = 0
-        for file in files:
-            original_filename = secure_filename_with_cyrillic(file.filename)
+        from utils.files import save_uploaded_files
+        success_count = save_uploaded_files(files, UPLOAD_FOLDER)
 
-            base, ext = os.path.splitext(original_filename)
-            filename = original_filename
-
-            # If the file exists, add the suffix (2), (3), etc.
-            if os.path.exists(os.path.join('uploads', filename)):
-                counter = 2
-                while True:
-                    new_filename = f"{base}_{counter}{ext}"
-                    if not os.path.exists(os.path.join('uploads', new_filename)):
-                        filename = new_filename
-                        break
-                    counter += 1
-
-            file.save(os.path.join('uploads', filename))
-            success_count += 1
-        
         if success_count > 0:
             message = _("File successfully uploaded") if success_count == 1 else f'{success_count} {_("files uploaded")}'
-            
+
             # If this is AJAX request, return json
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return {'success': True, 'message': message}
-            
+
             flash(message, 'success')
             return redirect(url_for('files.files'))
     if USE_CLOUDFLARE_BYPASS:
@@ -126,7 +113,7 @@ def upload_file():
         return render_template('upload.html', UPLOAD_DOMAIN=UPLOAD_DOMAIN, access_token=generate_access_token(3600))
     else:
         return render_template('upload.html')
-    
+
 @files_bp.route('/upload-bypass', methods=['POST', 'OPTIONS'])
 def upload_bypass():
     if not USE_CLOUDFLARE_BYPASS:
@@ -142,41 +129,22 @@ def upload_bypass():
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
             'Access-Control-Allow-Headers': '*',
             'Access-Control-Max-Age': '86400'}
-    
+
     if request.method == 'OPTIONS':
         return '', 200, CORS_HEADERS
-    
+
     # Check if there is a file in the request
     if 'file' not in request.files:
-        return {'success': False, 'message': '_("No file selected")'}, 400, CORS_HEADERS
-    
+        return {'success': False, 'message': _("No file selected")}, 400, CORS_HEADERS
+
     files = request.files.getlist('file')
-    
+
     if not files or files[0].filename == '':
-        return {'success': False, 'message': '_("No file selected")'}, 400, CORS_HEADERS
-    
-    from utils.security import secure_filename_with_cyrillic
-    
-    success_count = 0
-    for file in files:
-        original_filename = secure_filename_with_cyrillic(file.filename)
+        return {'success': False, 'message': _("No file selected")}, 400, CORS_HEADERS
 
-        base, ext = os.path.splitext(original_filename)
-        filename = original_filename
+    from utils.files import save_uploaded_files
+    success_count = save_uploaded_files(files, UPLOAD_FOLDER)
 
-        # If the file exists, add the suffix (2), (3), etc.
-        if os.path.exists(os.path.join('uploads', filename)):
-            counter = 2
-            while True:
-                new_filename = f"{base}_{counter}{ext}"
-                if not os.path.exists(os.path.join('uploads', new_filename)):
-                    filename = new_filename
-                    break
-                counter += 1
-
-        file.save(os.path.join('uploads', filename))
-        success_count += 1
-    
     if success_count > 0:
         message = _("File successfully uploaded") if success_count == 1 else f'{success_count} {_("files uploaded")}'
         return {'success': True, 'message': message}, 200, CORS_HEADERS
@@ -188,44 +156,48 @@ def download_file(filename, file_hash):
     try:
         # Divide the hash and validity period
         signature, expiration = file_hash.split('-')
-        
+
         # We check the validity period
         current_time = int(time.time())
         if current_time > int(expiration):
             abort(410)
-        
+
         # We generate a hash again for verification
         expected_hash = generate_download_hash(filename, current_app.config['SECRET_KEY'], expires_at=int(expiration))
         expected_signature = expected_hash.split('-')[0]
-        
-        # Compare hashs
-        if signature != expected_signature:
+
+        # Compare hashs (timing-safe)
+        if not hmac.compare_digest(signature, expected_signature):
             abort(403)
-        
+
         preview_mode = request.args.get('preview', 'false').lower() == 'true'
-        
+
+        # Path traversal protection
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        if not _is_safe_path(file_path):
+            abort(403)
+
         # Проверяем существование файла
-        file_path = os.path.join(current_app.root_path, 'uploads', filename)
         if not os.path.exists(file_path):
             logger.error(f"File not found: {filename}")
             abort(404)
-        
+
         response = send_from_directory(
-            'uploads',
+            UPLOAD_FOLDER,
             filename,
             as_attachment=not preview_mode,
             mimetype='application/pdf' if filename.lower().endswith('.pdf') else None
         )
-        
+
         if filename.lower().endswith('.pdf'):
             # Coding the file name in the Content-Disposition title
             encoded_filename = urllib.parse.quote(filename)
-            
+
             if preview_mode:
                 response.headers['Content-Disposition'] = f'inline; filename="{encoded_filename}"'
             else:
                 response.headers['Content-Disposition'] = f'attachment; filename="{encoded_filename}"'
-        
+
         return response
     except Exception as e:
         logger.error(f"Error downloading file: {str(e)}")
@@ -238,22 +210,26 @@ def bulk_download():
     try:
         # We get a list of files from the form
         files = request.form.getlist('files')
-        
+
         if not files:
             flash(_('No files selected for download'), 'warning')
             return redirect(url_for('files.files'))
-        
+
         # If only one file is selected, we redirect the direct download
         if len(files) == 1:
-            return redirect(url_for('files.download_file', filename=files[0]))
-        
+            file_hash = generate_download_hash(files[0], current_app.config['SECRET_KEY'])
+            return redirect(url_for('files.download_file', filename=files[0], file_hash=file_hash))
+
         # For many files we create a temporary archive
         temp_dir = tempfile.mkdtemp()
         zip_path = os.path.join(temp_dir, 'files.zip')
-        
+
         with zipfile.ZipFile(zip_path, 'w') as zipf:
             for file in files:
-                file_path = os.path.join('uploads', file)
+                file_path = os.path.join(UPLOAD_FOLDER, file)
+                # Path traversal protection
+                if not _is_safe_path(file_path):
+                    continue
                 if os.path.exists(file_path):
                     zipf.write(file_path, file)
 
@@ -265,16 +241,11 @@ def bulk_download():
             download_name='files.zip'
         )
 
-        # Add a headers for tracking the deletion
-        # We do not delete the file immediately, but mark it for subsequent cleaning
-        response.headers['X-Temp-Dir'] = temp_dir
-        response.headers['X-Zip-Path'] = zip_path
-
         # We use flask-specific functionality to close the connection
         response.call_on_close(lambda: cleanup_temp_files(temp_dir, zip_path))
-        
+
         return response
-    
+
     except Exception as e:
         logger.error(f"Mass download error: {str(e)}")
         flash(_('An error occurred while preparing files for download'), 'danger')
@@ -284,7 +255,10 @@ def bulk_download():
 @login_required
 def delete_file(filename):
     try:
-        file_path = os.path.join('uploads', filename)
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        # Path traversal protection
+        if not _is_safe_path(file_path):
+            abort(403)
         if os.path.exists(file_path):
             os.remove(file_path)
             flash(f"{gettext('File')} {filename} {gettext('deleted')}", 'success')
@@ -293,7 +267,7 @@ def delete_file(filename):
     except Exception as e:
         logger.error(f"Error deleting file: {str(e)}")
         flash(_('Error deleting file'), 'danger')
-    
+
     return redirect(url_for('files.files'))
 
 @files_bp.route('/bulk_delete', methods=['POST'])
@@ -302,18 +276,22 @@ def bulk_delete():
     try:
         # We get a list of files from the form
         files = request.form.getlist('files')
-        
+
         if not files:
             flash(_('No files selected for deletion'), 'warning')
             return redirect(url_for('files.files'))
-        
+
         successful = 0
         failed = 0
-        
+
         # We delete each file
         for filename in files:
-            file_path = os.path.join('uploads', filename)
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
             try:
+                # Path traversal protection
+                if not _is_safe_path(file_path):
+                    failed += 1
+                    continue
                 if os.path.exists(file_path):
                     os.remove(file_path)
                     successful += 1
@@ -322,7 +300,7 @@ def bulk_delete():
             except Exception as e:
                 logger.error(f"Error deleting file {filename}: {str(e)}")
                 failed += 1
-        
+
         # We display a message about the result of the operation
         if successful > 0 and failed == 0:
             flash(f"{gettext('Successfully deleted')} {successful} {gettext('files')}", 'success')
@@ -330,9 +308,9 @@ def bulk_delete():
             flash(f"{gettext('Deleted')} {successful} {gettext('files, failed to delete')} {failed} {gettext('files')}", 'warning')
         else:
             flash(_('Failed to delete selected files'), 'danger')
-            
+
         return redirect(url_for('files.files'))
-        
+
     except Exception as e:
         logger.error(f"Error during bulk deletion: {str(e)}")
         flash(_('An error occurred while deleting files'), 'danger')

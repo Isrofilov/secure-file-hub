@@ -56,7 +56,7 @@ def verify_access_token(token):
         
         expected_signature_b64 = base64.urlsafe_b64encode(expected_signature).decode('utf-8')
         
-        # Compare the signatures
-        return signature == expected_signature_b64
+        # Compare the signatures (timing-safe)
+        return hmac.compare_digest(signature, expected_signature_b64)
     except Exception:
         return False

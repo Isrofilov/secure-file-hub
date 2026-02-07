@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   file-manager:
     build: .
@@ -8,6 +6,7 @@ services:
     volumes:
       - ./uploads:/app/uploads
     environment:
+      - SECRET_KEY=change_me_to_a_secure_random_string
       - TOTP_SECRET=your_secure_totp_secret_here # Optional, will be generated on startup
       - BACKUP_CODES=123456,234567,345678,456789 # Optional
       - UPLOAD_FOLDER=uploads # optional
@@ -15,4 +14,10 @@ services:
       - IMAGE_PREVIEW_ENABLED=true # optional
       - DOMAIN=yourdomain.com # optional
       - UPLOAD_DOMAIN=upload.yourdomain.com # optional
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped

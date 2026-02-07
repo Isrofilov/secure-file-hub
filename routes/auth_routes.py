@@ -3,7 +3,6 @@ from flask_babel import gettext as _
 from datetime import datetime
 from utils.auth import get_client_ip, verify_totp, verify_backup_code, totp_limiter
 from config import DEFAULT_TIMEZONE, BACKUP_CODES, totp
-from utils.logging_config import configure_logging
 import logging
 
 # Create Blueprint for authentication routes
@@ -58,6 +57,6 @@ def login():
 
 @auth_bp.route('/logout')
 def logout():
-    session['authenticated'] = False
+    session.clear()
     flash(_('You have logged out'), 'info')
     return redirect(url_for('auth.login'))

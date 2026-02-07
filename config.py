@@ -1,7 +1,6 @@
 import os
 import secrets
 import pytz
-from utils.logging_config import configure_logging
 import logging
 from dotenv import load_dotenv
 from utils.auth import validate_totp_secret, validate_backup_codes
@@ -22,7 +21,7 @@ DEFAULT_TIMEZONE = pytz.timezone(os.environ.get('TIMEZONE', 'Europe/Moscow'))
 
 # Turning on/off the pre -examination of the images
 IMAGE_PREVIEW_ENABLED = os.environ.get('IMAGE_PREVIEW_ENABLED', 'true').lower() == 'true'
-logger.info("Image preview: " + "enabled" if IMAGE_PREVIEW_ENABLED else "disabled")
+logger.info("Image preview: " + ("enabled" if IMAGE_PREVIEW_ENABLED else "disabled"))
 
 # Settings for bypassing restrictions of Cloudflare (if necessary)
 # If it is necessary to use a bypass of Cloudflare restrictions, you need to specify the domains
@@ -42,7 +41,10 @@ BABEL_DEFAULT_LOCALE = 'en'
 BABEL_SUPPORTED_LOCALES = ['en', 'ru']
 
 # Configuration Applications
-SECRET_KEY = secrets.token_hex(16)
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_hex(16)
+    logger.warning("SECRET_KEY not set in environment variables. Using a randomly generated key — sessions will not persist across restarts.")
 
 # Validation and initialization TOTP
 TOTP_SECRET, totp = validate_totp_secret(os.environ.get('TOTP_SECRET'))
@@ -50,17 +52,20 @@ TOTP_SECRET, totp = validate_totp_secret(os.environ.get('TOTP_SECRET'))
 # Validation and initialization of backup codes
 BACKUP_CODES = validate_backup_codes(os.environ.get('BACKUP_CODES', ''))
 
+# Upload folder configuration
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'uploads')
+
 # Checking and creating upload folder
 try:
-    os.makedirs('uploads', exist_ok=True)
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 except Exception as e:
-    logger.error(f"Error when creating a folder uploads: {e}")
+    logger.error(f"Error when creating a folder {UPLOAD_FOLDER}: {e}")
     raise
 
-if not os.path.isdir('uploads'):
-    logger.error(f"uploads is not a folder")
-    raise NotADirectoryError('uploads')
+if not os.path.isdir(UPLOAD_FOLDER):
+    logger.error(f"{UPLOAD_FOLDER} is not a folder")
+    raise NotADirectoryError(UPLOAD_FOLDER)
 
-if not os.access('uploads', os.W_OK):
-    logger.error(f"No write permission to the folder uploads")
-    raise PermissionError(f"No write permission to the folder uploads")
+if not os.access(UPLOAD_FOLDER, os.W_OK):
+    logger.error(f"No write permission to the folder {UPLOAD_FOLDER}")
+    raise PermissionError(f"No write permission to the folder {UPLOAD_FOLDER}")
