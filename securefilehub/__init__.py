@@ -75,7 +75,9 @@ def create_app(settings: Settings | None = None) -> Flask:
                 leftover.unlink()
         except OSError:
             pass
-    authenticator = Authenticator(settings.totp_secret, settings.backup_codes, settings.state_dir)
+    authenticator = Authenticator(
+        settings.totp_secret, settings.backup_codes, settings.state_dir, settings.backup_codes_reusable
+    )
     limiter = RateLimiter(
         settings.login_max_attempts, settings.login_window_seconds, settings.login_global_max_attempts
     )
@@ -90,6 +92,8 @@ def create_app(settings: Settings | None = None) -> Flask:
 
     if settings.totp_generated:
         log_totp_setup(authenticator.provisioning_uri(), settings.totp_secret)
+    if settings.backup_codes_reusable and any(len(code) < 12 for code in settings.backup_codes):
+        logger.warning("Reusable backup codes act like permanent passwords; use codes of 12+ random characters")
     if not settings.backup_codes:
         logger.info("No BACKUP_CODES configured")
     if settings.cloudflare_bypass:

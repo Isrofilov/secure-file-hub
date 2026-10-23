@@ -10,6 +10,7 @@ services:
       # All settings are optional, see README.md
       - TOTP_SECRET=          # generated and saved to uploads/.securefilehub on first start
       - BACKUP_CODES=         # e.g. 7fk2-9qpm-x3va,c8d1-mm4z-2k7w (each works once)
+      - BACKUP_CODES_REUSABLE=false  # true keeps codes valid after use
       - TIMEZONE=Europe/Moscow
       - SECURE_COOKIES=false  # set to true when the site is served over HTTPS
       - TRUSTED_PROXIES=0     # number of reverse proxies in front of the app

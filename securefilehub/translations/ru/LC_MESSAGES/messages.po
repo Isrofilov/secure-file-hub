@@ -333,3 +333,6 @@ msgstr "Ошибка"
 
 msgid "Something went wrong."
 msgstr "Что-то пошло не так."
+
+msgid "Enter one of your backup codes"
+msgstr "Введите один из резервных кодов"

@@ -9,7 +9,7 @@ SecureFileHub is a lightweight, self-hosted file manager built with Python/Flask
 ## 🔑 Features
 
 - **TOTP login**: sign in with a code from any authenticator app; a code that has already been used is rejected (replay protection)
-- **Backup codes**: optional emergency codes, 6–64 characters (letters, digits, dashes), each one works only once
+- **Backup codes**: optional emergency codes, 6–64 characters (letters, digits, dashes), single-use by default (can be made reusable)
 - **Brute-force protection**: failed logins are limited per client (IPv6 addresses are grouped by /64) and by a global cap across all clients
 - **Hardened web app**: CSRF protection on every state-changing request, a strict Content Security Policy without inline scripts, sandboxed file responses, secure session cookies
 - **File browser**: list and grid views, image thumbnails (cached WebP), multi-select
@@ -44,7 +44,7 @@ services:
       - ./uploads:/app/uploads
     environment:
       - TIMEZONE=Europe/London
-      - BACKUP_CODES=7fk2-9qpm-x3va,c8d1-mm4z-2k7w   # optional, each works once
+      - BACKUP_CODES=7fk2-9qpm-x3va,c8d1-mm4z-2k7w   # optional, each works once by default
       # - SECURE_COOKIES=true                        # when served over HTTPS
       # - TRUSTED_PROXIES=1                          # when behind a reverse proxy
     restart: unless-stopped
@@ -122,7 +122,9 @@ The same directory also holds the thumbnail cache, unfinished uploads and the li
 
 Backup codes are for emergencies when your phone is not at hand. Set them as a comma-separated list in `BACKUP_CODES`, for example `7fk2-9qpm-x3va,c8d1-mm4z-2k7w`. Each code is 6–64 characters long and may contain letters, digits and dashes.
 
-Each backup code works **only once**: used codes are recorded (as hashes) in the state directory, and the log shows how many unused codes are left. Store them separately from your authenticator device and add new codes when you run low.
+By default each backup code works **only once**: used codes are recorded (as hashes) in the state directory, and the log shows how many unused codes are left. Store them separately from your authenticator device and add new codes when you run low.
+
+If you prefer permanent codes, as in 1.x, set `BACKUP_CODES_REUSABLE=true`. Keep in mind that such a code is effectively a password that never changes: anyone who sees or intercepts it once can sign in for as long as it is configured, and an automated attacker's chance of guessing it does not reset every 30 seconds like a TOTP code. If you enable it, use long random codes (12+ characters, e.g. `7fk2-9qpm-x3va`) rather than 6 digits, and replace a code as soon as you suspect it was seen.
 
 ## ⚙️ Configuration
 
@@ -133,7 +135,8 @@ All settings are optional and are read from environment variables (or a `.env` f
 | `UPLOAD_FOLDER` | `uploads` (`/app/uploads` in Docker) | Where files are stored |
 | `SECRET_KEY` | generated and saved | Key for signing sessions and links; use at least 32 random characters |
 | `TOTP_SECRET` | generated and saved | Base32 TOTP secret for your authenticator app |
-| `BACKUP_CODES` | — | Comma-separated single-use backup codes (6–64 letters, digits, dashes) |
+| `BACKUP_CODES` | — | Comma-separated backup codes (6–64 letters, digits, dashes) |
+| `BACKUP_CODES_REUSABLE` | `false` | `true` keeps backup codes valid after use (as in 1.x), see [Backup codes](#backup-codes) |
 | `TIMEZONE` | `Europe/Moscow` | Time zone for displayed dates and ZIP names, e.g. `Europe/London`; unknown values fall back to UTC |
 | `IMAGE_PREVIEW_ENABLED` | `true` | Show image thumbnails |
 | `MAX_UPLOAD_SIZE_MB` | `0` | Maximum request size for uploads in MB, `0` means no limit |
@@ -227,7 +230,7 @@ The site keeps working through `DOMAIN`, while the upload page sends files direc
 
 - `TIMEZONE` still defaults to `Europe/Moscow`
 - `X-Forwarded-For` is no longer trusted by default — if you run behind a reverse proxy, set `TRUSTED_PROXIES` (otherwise every client looks like the proxy and shares one rate limit)
-- Backup codes are now single-use and must be 6–64 characters of letters, digits and dashes
+- Backup codes are now single-use (set `BACKUP_CODES_REUSABLE=true` to keep the old behaviour) and must be 6–64 characters of letters, digits and dashes
 - Logout is now a POST request (the logout button in the interface) and signs out **all** sessions, on every device
 - Old download links (`/download/...`) no longer work; use share links instead
 - Bootstrap, Flask-Babel, Flask-Minify and pytz have been removed — reinstall dependencies from `requirements.txt`

@@ -28,13 +28,15 @@ logger = logging.getLogger(__name__)
 class Authenticator:
     """Verifies one-time codes.
 
-    TOTP codes are accepted once (a replayed code is rejected) and each backup code
-    works exactly once: used codes are recorded as hashes in the state directory.
+    TOTP codes are accepted once (a replayed code is rejected). Backup codes work once
+    as well, with used codes recorded as hashes in the state directory, unless they are
+    configured as reusable.
     """
 
-    def __init__(self, totp_secret: str, backup_codes: tuple[str, ...], state_dir: Path):
+    def __init__(self, totp_secret: str, backup_codes: tuple[str, ...], state_dir: Path, reusable: bool = False):
         self._totp = pyotp.TOTP(totp_secret)
         self._backup_codes = backup_codes
+        self._reusable = reusable
         self._used_codes_file = state_dir / "used_backup_codes"
         self._last_counter = 0
         self._lock = threading.Lock()
@@ -74,6 +76,9 @@ class Authenticator:
             matched |= hmac.compare_digest(code.encode(), candidate.encode())
         if not matched:
             return False
+        if self._reusable:
+            logger.warning("Backup code used for login")
+            return True
         digest = self._code_hash(code)
         # The file lock makes the check-and-record atomic across worker processes too
         with self._lock, open(self._used_codes_file, "a+", encoding="utf-8") as f:

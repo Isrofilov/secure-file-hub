@@ -315,6 +315,16 @@ class FileTests(AppTestCase):
         self.assertEqual(self.client.get("/thumb/broken.png").status_code, 404)
 
 
+class ReusableBackupCodesTests(AppTestCase):
+    env = {"BACKUP_CODES_REUSABLE": "true"}
+
+    def test_backup_code_can_be_reused(self):
+        for _ in range(2):
+            self.assertEqual(self.login("backup-code-2").status_code, 302)
+            self.client.post("/logout", data={"csrf_token": self.csrf()})
+        self.assertEqual(self.login("wrong-code-1").status_code, 401)
+
+
 class LimitsTests(AppTestCase):
     env = {"MAX_UPLOAD_SIZE_MB": "1"}
 

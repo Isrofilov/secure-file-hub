@@ -6,7 +6,7 @@
   <div class="auth-logo">{{ icon('shield') }}</div>
   <h1 class="auth-title">SecureFileHub</h1>
   <p class="muted" data-mode-text="totp">{{ _('Enter the 6-digit code from your authenticator app') }}</p>
-  <p class="muted" data-mode-text="backup" hidden>{{ _('Enter one of your backup codes. Each code works only once.') }}</p>
+  <p class="muted" data-mode-text="backup" hidden>{% if backup_codes_reusable %}{{ _('Enter one of your backup codes') }}{% else %}{{ _('Enter one of your backup codes. Each code works only once.') }}{% endif %}</p>
 
   <form method="post" class="auth-form" id="login-form" autocomplete="off">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -106,6 +106,7 @@ class Settings:
     totp_secret: str
     totp_generated: bool
     backup_codes: tuple[str, ...]
+    backup_codes_reusable: bool
     timezone: ZoneInfo
     image_preview: bool
     domain: str
@@ -176,6 +177,7 @@ def load_settings() -> Settings:
         totp_secret=totp_secret,
         totp_generated=totp_generated,
         backup_codes=_backup_codes(os.environ.get("BACKUP_CODES", "")),
+        backup_codes_reusable=_bool("BACKUP_CODES_REUSABLE", False),
         timezone=_timezone(os.environ.get("TIMEZONE", "").strip() or "Europe/Moscow"),
         image_preview=_bool("IMAGE_PREVIEW_ENABLED", True),
         domain=domain,

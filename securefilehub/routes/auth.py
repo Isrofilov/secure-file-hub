@@ -58,7 +58,7 @@ def login():
                 if lang:
                     session["lang"] = lang
                 logger.info("Login from %s using %s", key, method)
-                if method == "backup":
+                if method == "backup" and not settings().backup_codes_reusable:
                     flash(_("You signed in with a backup code. Each backup code works only once."), "warning")
                 response = redirect(url_for("files.index"))
                 response.set_cookie(DEVICE_COOKIE, sign("device", 1), max_age=DEVICE_COOKIE_AGE, httponly=True,
@@ -68,7 +68,7 @@ def login():
             logger.warning("Failed login from %s", key)
             flash(_("Invalid code"), "error")
             status = 401
-    return render_template("login.html"), status
+    return render_template("login.html", backup_codes_reusable=settings().backup_codes_reusable), status
 
 
 @bp.post("/logout")
