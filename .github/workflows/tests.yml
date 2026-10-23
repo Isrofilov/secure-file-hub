@@ -37,5 +37,5 @@ jobs:
           done
           curl -fsS http://127.0.0.1:8000/login > /dev/null
           docker exec sfh sh -c 'test "$(stat -c %u /proc/1)" = 1000'  # app runs unprivileged
-          ls -la uploads/.securefilehub
+          docker exec sfh ls -la /app/uploads/.securefilehub  # private to the app user (mode 700)
           docker logs sfh
