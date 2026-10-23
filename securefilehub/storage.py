@@ -210,7 +210,9 @@ class Storage:
         raise FileExistsError(base)
 
     def delete(self, entry: FileEntry) -> None:
-        self.thumbnail_path(entry).unlink(missing_ok=True)
+        thumb = self.thumbnail_path(entry)
+        thumb.unlink(missing_ok=True)
+        thumb.with_suffix(".failed").unlink(missing_ok=True)
         self.path(entry).unlink()
 
     # -- zip -----------------------------------------------------------------
@@ -248,8 +250,11 @@ class Storage:
     def thumbnail(self, entry: FileEntry, size: int = 480) -> Path | None:
         """Returns a cached WebP thumbnail of an image, generating it on first use."""
         target = self.thumbnail_path(entry)
+        failed = target.with_suffix(".failed")
         if target.exists():
             return target
+        if failed.exists():
+            return None
         try:
             from PIL import Image, ImageOps
         except ImportError:
@@ -269,6 +274,7 @@ class Storage:
         except Exception as exc:  # broken, unsupported or oversized image
             logger.info("No thumbnail for %s: %s", entry.name, exc)
             tmp.unlink(missing_ok=True)
+            failed.touch()
             return None
 
 

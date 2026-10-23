@@ -265,7 +265,7 @@ img { display: block; max-width: 100%; }
   color: var(--text); font-weight: 550;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.file-meta { display: none; font-size: .82rem; }
+.file-meta { display: none; font-size: .82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-size, .file-date { font-size: .9rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .file-actions { display: flex; justify-content: flex-end; gap: 2px; }
 
@@ -322,6 +322,7 @@ img { display: block; max-width: 100%; }
   animation: rise .18s ease-out;
 }
 .selection-bar #selection-count { font-weight: 600; white-space: nowrap; }
+.selection-bar .row-actions { flex-wrap: nowrap; }
 .selection-bar .btn:not(.btn-danger) { background: transparent; border-color: color-mix(in srgb, var(--bg) 30%, transparent); color: var(--bg); }
 .selection-bar .btn:not(.btn-danger):hover { background: color-mix(in srgb, var(--bg) 15%, transparent); }
 
