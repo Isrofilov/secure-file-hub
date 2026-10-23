@@ -22,7 +22,7 @@ from ..auth import login_required
 from ..i18n import _
 from ..security import CSRF_FIELD, CSRF_HEADER, FILE_CSP, csrf_exempt, sign, unsign
 from ..storage import FileEntry
-from . import settings, storage
+from . import epoch, settings, storage
 
 logger = logging.getLogger(__name__)
 
@@ -202,8 +202,9 @@ def _receive_files(csrf_required: bool):
                 saved.append(store.save(item.stream, item.filename))
         return saved
     finally:
-        for item in files.values():
-            item.close()
+        for items in files.listvalues():
+            for item in items:
+                item.close()
 
 
 def _upload_result(saved: list[str]):
@@ -220,7 +221,7 @@ def upload_page():
     s = settings()
     upload_url = url_for("files.upload")
     if s.cloudflare_bypass:
-        token = sign("upload", 1)
+        token = sign("upload", epoch().current())
         upload_url = f"https://{s.upload_domain}{url_for('files.upload_bypass', token=token)}"
     max_bytes = current_app.config["MAX_CONTENT_LENGTH"] or 0
     return render_template("upload.html", upload_url=upload_url, max_bytes=max_bytes)
@@ -238,6 +239,14 @@ def upload():
     else:
         flash(_("No files selected"), "warning")
     return redirect(url_for("files.index") if saved else url_for("files.upload_page"))
+
+
+@bp.after_app_request
+def _bypass_cors(response):
+    # Errors raised while receiving the upload need CORS headers too, or the browser hides them
+    if request.endpoint == "files.upload_bypass" and settings().cloudflare_bypass:
+        response.headers.update(_cors_headers())
+    return response
 
 
 def _cors_headers() -> dict[str, str]:
@@ -258,7 +267,7 @@ def upload_bypass():
         abort(404)
     if request.method == "OPTIONS":
         return "", 204, _cors_headers()
-    if unsign("upload", request.args.get("token", ""), max_age=s.session_lifetime_hours * 3600) != 1:
+    if unsign("upload", request.args.get("token", ""), max_age=s.session_lifetime_hours * 3600) != epoch().current():
         return {"ok": False, "error": "unauthorized"}, 401, _cors_headers()
     body, status = _upload_result(_receive_files(csrf_required=False))
     return body, status, _cors_headers()

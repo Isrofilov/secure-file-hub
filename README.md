@@ -137,7 +137,7 @@ All settings are optional and are read from environment variables (or a `.env` f
 | `TIMEZONE` | `Europe/Moscow` | Time zone for displayed dates and ZIP names, e.g. `Europe/London`; unknown values fall back to UTC |
 | `IMAGE_PREVIEW_ENABLED` | `true` | Show image thumbnails |
 | `MAX_UPLOAD_SIZE_MB` | `0` | Maximum request size for uploads in MB, `0` means no limit |
-| `SESSION_LIFETIME_HOURS` | `12` | How long a login stays valid |
+| `SESSION_LIFETIME_HOURS` | `12` | How long a login stays valid (counted from sign-in, not from the last request) |
 | `SHARE_LINK_TTL_HOURS` | `24` | How long share links stay valid |
 | `SECURE_COOKIES` | `false` | Send the session cookie only over HTTPS; set to `true` behind HTTPS |
 | `TRUSTED_PROXIES` | `0` | Number of reverse proxies in front of the app; `X-Forwarded-*` headers are ignored when `0` |
@@ -163,7 +163,7 @@ The login rate limiter lives in memory of a single process. Keep `WEB_CONCURRENC
 
 - At most `LOGIN_MAX_ATTEMPTS` failed logins per client within `LOGIN_WINDOW_SECONDS` (by default 5 per 5 minutes)
 - IPv6 clients are grouped by their /64 prefix, since one host usually owns the whole prefix
-- A global cap (`LOGIN_GLOBAL_MAX_ATTEMPTS`) slows down attacks spread across many addresses
+- A global cap (`LOGIN_GLOBAL_MAX_ATTEMPTS`) slows down attacks spread across many addresses. Browsers that have signed in successfully before are exempt from it, so an attacker cannot lock the owner out
 - A successful login resets the counter for that client
 - The client is identified by its real IP address, so it is important to configure the reverse proxy settings correctly (see below)
 
@@ -172,7 +172,7 @@ The login rate limiter lives in memory of a single process. Keep `WEB_CONCURRENC
 When the app runs behind nginx, Caddy, Traefik, Cloudflare etc.:
 
 - **`TRUSTED_PROXIES`** — set it to the number of proxies in front of the app (usually `1`). By default `X-Forwarded-For` is **ignored**: anyone can send that header, and trusting it would let an attacker pick a new fake IP for every attempt and bypass the rate limiter. With `TRUSTED_PROXIES=N`, only the address added by the last N proxies is used, as well as `X-Forwarded-Proto` and `X-Forwarded-Host`.
-- **`REAL_IP_HEADER`** — take the client IP from a header such as `CF-Connecting-IP`. Use it only when the app is reachable **exclusively** through that proxy; otherwise clients could set the header themselves.
+- **`REAL_IP_HEADER`** — take the client IP from a header such as `CF-Connecting-IP`. It is used only together with `TRUSTED_PROXIES`, and only when the app is reachable **exclusively** through that proxy; otherwise clients could set the header themselves.
 - **`SECURE_COOKIES=true`** — set it when the site is served over HTTPS.
 
 Minimal nginx example:
@@ -228,7 +228,7 @@ The site keeps working through `DOMAIN`, while the upload page sends files direc
 - `TIMEZONE` still defaults to `Europe/Moscow`
 - `X-Forwarded-For` is no longer trusted by default — if you run behind a reverse proxy, set `TRUSTED_PROXIES` (otherwise every client looks like the proxy and shares one rate limit)
 - Backup codes are now single-use and must be 6–64 characters of letters, digits and dashes
-- Logout is now a POST request (the logout button in the interface)
+- Logout is now a POST request (the logout button in the interface) and signs out **all** sessions, on every device
 - Old download links (`/download/...`) no longer work; use share links instead
 - Bootstrap, Flask-Babel, Flask-Minify and pytz have been removed — reinstall dependencies from `requirements.txt`
 - Translations are plain `.po` files loaded at startup from `securefilehub/translations/<lang>/LC_MESSAGES/messages.po`; there is no compile step

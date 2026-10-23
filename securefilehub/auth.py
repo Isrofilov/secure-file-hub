@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import hmac
 import ipaddress
 import logging
+import os
 import threading
 import time
 from collections import deque
@@ -14,6 +16,11 @@ from pathlib import Path
 
 import pyotp
 from flask import current_app, redirect, request, session, url_for
+
+from .security import unsign
+
+DEVICE_COOKIE = "sfh_device"
+DEVICE_COOKIE_AGE = 365 * 24 * 3600
 
 logger = logging.getLogger(__name__)
 
@@ -68,16 +75,15 @@ class Authenticator:
         if not matched:
             return False
         digest = self._code_hash(code)
-        with self._lock:
-            try:
-                used = set(self._used_codes_file.read_text(encoding="utf-8").split())
-            except FileNotFoundError:
-                used = set()
+        # The file lock makes the check-and-record atomic across worker processes too
+        with self._lock, open(self._used_codes_file, "a+", encoding="utf-8") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            f.seek(0)
+            used = set(f.read().split())
             if digest in used:
                 logger.warning("Rejected an already used backup code")
                 return False
-            with open(self._used_codes_file, "a", encoding="utf-8") as f:
-                f.write(digest + "\n")
+            f.write(digest + "\n")
         remaining = sum(self._code_hash(c) not in used | {digest} for c in self._backup_codes)
         logger.warning("Backup code used for login, %d unused backup codes left", remaining)
         return True
@@ -108,8 +114,12 @@ class RateLimiter:
             if not attempts:
                 del self._failures[key]
 
-    def retry_after(self, key: str) -> int:
-        """Seconds until the client may try again, 0 when it is not limited."""
+    def retry_after(self, key: str, trusted: bool = False) -> int:
+        """Seconds until the client may try again, 0 when it is not limited.
+
+        Trusted devices (ones that signed in before) are not subject to the global cap,
+        so an attacker hammering the login cannot lock the owner out.
+        """
         now = time.monotonic()
         with self._lock:
             self._prune(now)
@@ -117,15 +127,16 @@ class RateLimiter:
             attempts = self._failures.get(key)
             if attempts and len(attempts) >= self.max_attempts:
                 waits.append(attempts[-self.max_attempts] + self.window - now)
-            if self.global_max and len(self._global) >= self.global_max:
+            if not trusted and self.global_max and len(self._global) >= self.global_max:
                 waits.append(self._global[-self.global_max] + self.window - now)
             return max(1, int(max(waits) + 0.999)) if max(waits) > 0 else 0
 
-    def add_failure(self, key: str) -> None:
+    def add_failure(self, key: str, trusted: bool = False) -> None:
         now = time.monotonic()
         with self._lock:
             self._failures.setdefault(key, deque()).append(now)
-            self._global.append(now)
+            if not trusted:
+                self._global.append(now)
             self._prune(now)
 
     def reset(self, key: str) -> None:
@@ -139,7 +150,8 @@ def client_key() -> str:
     ``request.remote_addr`` is already corrected by ProxyFix when TRUSTED_PROXIES is set.
     IPv6 clients are grouped by /64, since a single host usually owns the whole prefix.
     """
-    header = current_app.config["REAL_IP_HEADER"]
+    # A client-supplied header is only meaningful when a trusted proxy sets it
+    header = current_app.config["REAL_IP_HEADER"] if current_app.config["TRUSTED_PROXIES"] else ""
     raw = (request.headers.get(header) if header else None) or request.remote_addr or ""
     try:
         ip = ipaddress.ip_address(raw.strip())
@@ -152,8 +164,37 @@ def client_key() -> str:
     return str(ip)
 
 
+class SessionEpoch:
+    """A counter stored on disk; bumping it on logout invalidates every existing session."""
+
+    def __init__(self, path: Path):
+        self.path = path
+
+    def current(self) -> int:
+        try:
+            return int(self.path.read_text(encoding="ascii").strip() or 0)
+        except (FileNotFoundError, ValueError):
+            return 0
+
+    def bump(self) -> None:
+        with open(self.path.with_suffix(".lock"), "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            tmp = self.path.with_suffix(".tmp")
+            tmp.write_text(str(self.current() + 1), encoding="ascii")
+            os.replace(tmp, self.path)
+
+
 def is_authenticated() -> bool:
-    return session.get("auth") is True
+    if session.get("auth") is not True:
+        return False
+    lifetime = current_app.permanent_session_lifetime.total_seconds()
+    if time.time() - session.get("auth_at", 0) > lifetime:
+        return False
+    return session.get("epoch") == current_app.extensions["sfh"]["epoch"].current()
+
+
+def is_trusted_device() -> bool:
+    return unsign("device", request.cookies.get(DEVICE_COOKIE, ""), max_age=DEVICE_COOKIE_AGE) == 1
 
 
 def login_required(view):

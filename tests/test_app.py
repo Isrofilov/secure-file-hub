@@ -99,6 +99,55 @@ class AuthTests(AppTestCase):
                                     headers={"X-Forwarded-For": "10.0.0.99"})
         self.assertEqual(response.status_code, 429)
 
+    def test_logout_revokes_copied_sessions(self):
+        self.login()
+        stolen = self.app.test_client()
+        with self.client.session_transaction() as sess:
+            data = dict(sess)
+        with stolen.session_transaction() as sess:
+            sess.update(data)
+        self.assertEqual(stolen.get("/files").status_code, 200)
+        self.client.post("/logout", data={"csrf_token": data["csrf"]})
+        self.assertEqual(stolen.get("/files").status_code, 302)
+
+    def test_session_has_absolute_lifetime(self):
+        self.login()
+        with self.client.session_transaction() as sess:
+            sess["auth_at"] -= 13 * 3600
+        self.assertEqual(self.client.get("/files").status_code, 302)
+
+    def test_real_ip_header_ignored_without_trusted_proxies(self):
+        token = self.csrf()
+        for i in range(5):
+            self.client.post("/login", data={"code": "000000", "csrf_token": token},
+                             headers={"CF-Connecting-IP": f"10.0.0.{i}"})
+        self.assertEqual(self.login().status_code, 429)
+
+    def test_global_cap_does_not_lock_out_trusted_device(self):
+        self.login()
+        self.client.post("/logout", data={"csrf_token": self.csrf()})
+        limiter = self.app.extensions["sfh"]["limiter"]
+        for i in range(40):
+            limiter.add_failure(f"198.51.100.{i}")
+        attacker = self.app.test_client()
+        attacker.get("/login")
+        with attacker.session_transaction() as sess:
+            token = sess["csrf"]
+        self.assertEqual(attacker.post("/login", data={"code": "000000", "csrf_token": token}).status_code, 429)
+        # The owner's device still gets through, with the next code
+        later = time.time() + 60
+        with mock.patch("time.time", return_value=later):
+            self.assertEqual(self.login(self.totp.at(later)).status_code, 302)
+
+    def test_small_endpoints_reject_large_bodies(self):
+        token = self.csrf()
+        response = self.client.post("/login", data={"code": "x" * (2 * 1024 * 1024), "csrf_token": token})
+        self.assertEqual(response.status_code, 413)
+
+    def test_newline_in_next_is_rejected(self):
+        response = self.client.get("/lang/en", query_string={"next": "/\r\nSet-Cookie: x=1"})
+        self.assertEqual(response.location, "/")
+
     def test_logout_requires_post(self):
         self.login()
         self.assertEqual(self.client.get("/logout").status_code, 405)
@@ -151,6 +200,7 @@ class FileTests(AppTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json["saved"], ["report.pdf", "report (2).pdf"])
         self.assertEqual((self.root / "report (2).pdf").read_bytes(), b"two")
+        self.assertEqual((self.root / "report.pdf").stat().st_mode & 0o777, 0o644)
         self.assertEqual(list((self.root / ".securefilehub" / "incoming").iterdir()), [])
 
     def test_upload_requires_csrf(self):
@@ -292,6 +342,14 @@ class BypassTests(AppTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Access-Control-Allow-Origin"], "https://files.example.com")
         self.assertTrue((self.root / "via-bypass.txt").exists())
+        too_large = anonymous.post(url, data={"file": (io.BytesIO(b"x"), "y.txt")}, content_type="text/plain")
+        self.assertEqual(too_large.headers.get("Access-Control-Allow-Origin"), "https://files.example.com")
+        # Signing out invalidates the upload token
+        with self.client.session_transaction() as sess:
+            token = sess["csrf"]
+        self.client.post("/logout", data={"csrf_token": token})
+        self.assertEqual(anonymous.post(url, data={"file": (io.BytesIO(b"x"), "z.txt")},
+                                        content_type="multipart/form-data").status_code, 401)
         bad = anonymous.post("/upload-bypass?token=bad", data={"file": (io.BytesIO(b"x"), "y.txt")},
                              content_type="multipart/form-data")
         self.assertEqual(bad.status_code, 401)

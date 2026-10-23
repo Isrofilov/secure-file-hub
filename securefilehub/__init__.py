@@ -14,7 +14,7 @@ from flask import Flask, g, request, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from . import i18n
-from .auth import Authenticator, RateLimiter, is_authenticated, log_totp_setup
+from .auth import Authenticator, RateLimiter, SessionEpoch, is_authenticated, log_totp_setup
 from .config import Settings, load_settings
 from .security import add_security_headers, check_csrf, content_security_policy, csrf_token
 from .storage import Storage
@@ -59,6 +59,7 @@ def create_app(settings: Settings | None = None) -> Flask:
         MAX_CONTENT_LENGTH=settings.max_upload_mb * 1024 * 1024 or None,
         SEND_FILE_MAX_AGE_DEFAULT=timedelta(days=365),
         REAL_IP_HEADER=settings.real_ip_header,
+        TRUSTED_PROXIES=settings.trusted_proxies,
         CSP=content_security_policy(settings.upload_domain if settings.cloudflare_bypass else ""),
         TEMPLATES_AUTO_RELOAD=False,
     )
@@ -67,13 +68,25 @@ def create_app(settings: Settings | None = None) -> Flask:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=n, x_proto=n, x_host=n)
 
     storage = Storage(settings.upload_folder, settings.incoming_dir, settings.thumbs_dir)
-    for leftover in settings.incoming_dir.iterdir():  # interrupted uploads
-        leftover.unlink(missing_ok=True)
+    # Remove interrupted uploads; recent ones may belong to another worker that is still running
+    for leftover in settings.incoming_dir.iterdir():
+        try:
+            if time.time() - leftover.stat().st_mtime > 24 * 3600:
+                leftover.unlink()
+        except OSError:
+            pass
     authenticator = Authenticator(settings.totp_secret, settings.backup_codes, settings.state_dir)
     limiter = RateLimiter(
         settings.login_max_attempts, settings.login_window_seconds, settings.login_global_max_attempts
     )
-    app.extensions["sfh"] = {"storage": storage, "auth": authenticator, "limiter": limiter}
+    app.extensions["sfh"] = {
+        "storage": storage,
+        "auth": authenticator,
+        "limiter": limiter,
+        "epoch": SessionEpoch(settings.state_dir / "session_epoch"),
+    }
+    if settings.real_ip_header and not settings.trusted_proxies:
+        logger.warning("REAL_IP_HEADER is ignored because TRUSTED_PROXIES is 0")
 
     if settings.totp_generated:
         log_totp_setup(authenticator.provisioning_uri(), settings.totp_secret)
@@ -91,9 +104,14 @@ def create_app(settings: Settings | None = None) -> Flask:
     app.register_blueprint(files.bp)
     errors.register(app)
 
+    upload_endpoints = {"files.upload", "files.upload_bypass"}
+
     @app.before_request
     def _before():
         g.started = time.perf_counter()
+        # Only the upload endpoints accept large bodies; everything else is a small form
+        if request.endpoint not in upload_endpoints:
+            request.max_content_length = 1024 * 1024
         check_csrf()
 
     @app.after_request

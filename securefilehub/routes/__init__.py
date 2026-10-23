@@ -1,6 +1,6 @@
 from flask import current_app
 
-from ..auth import Authenticator, RateLimiter
+from ..auth import Authenticator, RateLimiter, SessionEpoch
 from ..config import Settings
 from ..storage import Storage
 
@@ -15,6 +15,10 @@ def storage() -> Storage:
 
 def authenticator() -> Authenticator:
     return current_app.extensions["sfh"]["auth"]
+
+
+def epoch() -> SessionEpoch:
+    return current_app.extensions["sfh"]["epoch"]
 
 
 def limiter() -> RateLimiter:
