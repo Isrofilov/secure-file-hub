@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Upload') }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ _('Upload files') }}</h1>
+    <p class="muted">{% if max_bytes %}{{ _('Up to %(size)s per upload', size=max_bytes|filesize) }}{% else %}{{ _('Any file type, no size limit') }}{% endif %}</p>
+  </div>
+  <a class="btn" href="{{ url_for('files.index') }}">{{ icon('back') }}<span>{{ _('Back to files') }}</span></a>
+</div>
+
+<form class="uploader" id="uploader" method="post" action="{{ url_for('files.upload') }}" enctype="multipart/form-data"
+      data-url="{{ upload_url }}" data-max-bytes="{{ max_bytes }}" data-done-url="{{ url_for('files.index') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label class="dropzone" id="dropzone">
+    <input class="sr-only" type="file" name="file" id="file-input" multiple>
+    {{ icon('cloud-upload', 'dropzone-icon') }}
+    <span class="dropzone-title">{{ _('Drop files here or click to choose') }}</span>
+    <span class="muted">{{ _('You can also paste files from the clipboard') }}</span>
+  </label>
+
+  <div class="queue" id="queue" hidden>
+    <div class="queue-head">
+      <strong id="queue-summary"></strong>
+      <button class="btn btn-ghost btn-sm" type="button" id="queue-clear">{{ _('Clear') }}</button>
+    </div>
+    <ul class="queue-list" id="queue-list"></ul>
+    <div class="progress" aria-hidden="true"><div class="progress-bar" id="total-progress"></div></div>
+  </div>
+
+  <div class="row-actions end">
+    <button class="btn" type="button" id="cancel-upload" hidden>{{ icon('x') }}<span>{{ _('Cancel') }}</span></button>
+    <button class="btn btn-primary" type="submit" id="start-upload" disabled>{{ icon('upload') }}<span>{{ _('Upload') }}</span></button>
+  </div>
+</form>
+
+<template id="queue-item">
+  <li class="queue-item">
+    <span class="queue-icon"></span>
+    <span class="queue-info">
+      <span class="queue-name"></span>
+      <span class="queue-meta muted"></span>
+      <span class="progress"><span class="progress-bar"></span></span>
+    </span>
+    <button class="btn btn-ghost btn-icon btn-sm queue-remove" type="button" aria-label="{{ _('Remove') }}">{{ icon('x') }}</button>
+  </li>
+</template>
+
+<script type="application/json" id="upload-i18n">{{ {
+  "selected": _("Selected: %(count)s · %(size)s"),
+  "waiting": _("Waiting"),
+  "uploading": _("Uploading… %(percent)s%"),
+  "done": _("Uploaded"),
+  "renamed": _("Saved as %(name)s"),
+  "failed": _("Failed"),
+  "canceled": _("Canceled"),
+  "tooLarge": _("Too large"),
+  "allDone": _("All files uploaded"),
+  "someFailed": _("Some files were not uploaded"),
+  "units": [_("B"), _("KB"), _("MB"), _("GB"), _("TB")],
+  "leave": _("Uploads are still running. Leave the page?"),
+} | tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/upload.js') }}" defer></script>{% endblock %}

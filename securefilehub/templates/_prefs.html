@@ -1,0 +1,12 @@
+{% from "_macros.html" import icon %}
+<details class="menu">
+  <summary class="btn btn-ghost btn-icon" title="{{ _('Language') }}" aria-label="{{ _('Language') }}">{{ icon('translate') }}</summary>
+  <div class="menu-list">
+    {% for code, label in LANGUAGE_NAMES.items() %}
+    <a href="{{ url_for('auth.set_language', lang=code, next=current_path) }}" {% if code == get_locale() %}aria-current="true"{% endif %} lang="{{ code }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+</details>
+<button class="btn btn-ghost btn-icon" type="button" data-theme-toggle title="{{ _('Theme') }}" aria-label="{{ _('Theme') }}">
+  {{ icon('auto', 'theme-auto') }}{{ icon('sun', 'theme-light') }}{{ icon('moon', 'theme-dark') }}
+</button>

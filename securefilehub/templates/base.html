@@ -1,0 +1,75 @@
+{% from "_macros.html" import icon %}
+<!doctype html>
+<html lang="{{ get_locale() }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="same-origin">
+  <title>{% block title %}{% endblock %}{% if self.title() %} · {% endif %}SecureFileHub</title>
+  <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+  <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+  <link rel="icon" href="{{ asset('favicon-96x96.png') }}" type="image/png" sizes="96x96">
+  <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}" sizes="180x180">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
+  <meta name="apple-mobile-web-app-title" content="SecureFile">
+  <script src="{{ asset('js/theme.js') }}"></script>
+  <script src="{{ asset('js/app.js') }}" defer></script>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  {% if is_authenticated() %}
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="{{ url_for('files.index') }}">
+        {{ icon('shield', 'brand-icon') }}<span>SecureFileHub</span>
+      </a>
+      <nav class="nav" aria-label="{{ _('Main') }}">
+        <a href="{{ url_for('files.index') }}" {% if request.endpoint == 'files.index' %}aria-current="page"{% endif %}>{{ icon('folder') }}<span>{{ _('Files') }}</span></a>
+        <a href="{{ url_for('files.upload_page') }}" {% if request.endpoint == 'files.upload_page' %}aria-current="page"{% endif %}>{{ icon('upload') }}<span>{{ _('Upload') }}</span></a>
+      </nav>
+      <div class="topbar-actions">
+        {% include "_prefs.html" %}
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-ghost btn-icon" type="submit" title="{{ _('Sign out') }}" aria-label="{{ _('Sign out') }}">{{ icon('logout') }}</button>
+        </form>
+      </div>
+    </div>
+  </header>
+  {% endif %}
+
+  <main class="{% block main_class %}container page{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite">
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="toast toast-{{ category }}" data-autohide>{{ icon({'success': 'success', 'error': 'error', 'warning': 'warning'}.get(category, 'info')) }}<span>{{ message }}</span></div>
+    {% endfor %}
+  </div>
+
+  <dialog class="modal modal-sm" id="confirm-dialog">
+    <form method="dialog">
+      <h2 class="modal-title" data-slot="title"></h2>
+      <div class="modal-body" data-slot="body"></div>
+      <div class="modal-actions">
+        <button class="btn" value="cancel">{{ _('Cancel') }}</button>
+        <button class="btn btn-danger" value="ok" data-slot="ok">{{ _('Delete') }}</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="application/json" id="i18n">{{ {
+    "csrf": csrf_token(),
+    "icons": asset('icons.svg'),
+    "strings": {
+      "copied": _("Link copied"),
+      "copyFailed": _("Copy the link manually"),
+      "networkError": _("Network error. Check your connection and try again."),
+      "error": _("Something went wrong"),
+    }
+  } | tojson }}</script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

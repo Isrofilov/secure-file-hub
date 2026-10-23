@@ -1,0 +1,335 @@
+# Russian translations for SecureFileHub.
+# This file is distributed under the same license as the SecureFileHub project.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: SecureFileHub 2.0\n"
+"Last-Translator: Artyom Isrofilov <artyom@isrofilov.ru>\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#, python-format
+msgid "Too many failed attempts. Try again in %(minutes)d min %(seconds)d sec."
+msgstr "Слишком много неудачных попыток. Повторите через %(minutes)d мин %(seconds)d сек."
+
+msgid "You signed in with a backup code. Each backup code works only once."
+msgstr "Вы вошли с резервным кодом. Каждый резервный код действует только один раз."
+
+msgid "Invalid code"
+msgstr "Неверный код"
+
+msgid "You have signed out"
+msgstr "Вы вышли из системы"
+
+msgid "No files selected"
+msgstr "Файлы не выбраны"
+
+#, python-format
+msgid "Deleted %(name)s"
+msgstr "Удалён файл %(name)s"
+
+#, python-format
+msgid "Files deleted: %(count)d"
+msgstr "Удалено файлов: %(count)d"
+
+#, python-format
+msgid "Could not delete: %(names)s"
+msgstr "Не удалось удалить: %(names)s"
+
+#, python-format
+msgid "Files uploaded: %(count)d"
+msgstr "Загружено файлов: %(count)d"
+
+msgid "Language"
+msgstr "Язык"
+
+msgid "Theme"
+msgstr "Тема"
+
+msgid "Main"
+msgstr "Основное меню"
+
+msgid "Files"
+msgstr "Файлы"
+
+msgid "Upload"
+msgstr "Загрузить"
+
+msgid "Sign out"
+msgstr "Выйти"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Delete"
+msgstr "Удалить"
+
+msgid "Link copied"
+msgstr "Ссылка скопирована"
+
+msgid "Copy the link manually"
+msgstr "Скопируйте ссылку вручную"
+
+msgid "Network error. Check your connection and try again."
+msgstr "Ошибка сети. Проверьте подключение и попробуйте снова."
+
+msgid "Something went wrong"
+msgstr "Что-то пошло не так"
+
+msgid "Home"
+msgstr "На главную"
+
+msgid "Back"
+msgstr "Назад"
+
+#, python-format
+msgid "Files: %(count)s · %(size)s"
+msgstr "Файлов: %(count)s · %(size)s"
+
+msgid "Search"
+msgstr "Поиск"
+
+msgid "Search files"
+msgstr "Поиск файлов"
+
+msgid "View"
+msgstr "Вид"
+
+msgid "List"
+msgstr "Список"
+
+msgid "Grid"
+msgstr "Плитка"
+
+msgid "Select all"
+msgstr "Выбрать все"
+
+msgid "Name"
+msgstr "Имя"
+
+msgid "Size"
+msgstr "Размер"
+
+msgid "Modified"
+msgstr "Изменён"
+
+msgid "Select"
+msgstr "Выбрать"
+
+msgid "Preview"
+msgstr "Просмотр"
+
+msgid "Share link"
+msgstr "Ссылка для доступа"
+
+msgid "Download"
+msgstr "Скачать"
+
+msgid "No files match your search"
+msgstr "Ничего не найдено"
+
+msgid "Clear selection"
+msgstr "Снять выделение"
+
+msgid "No files yet"
+msgstr "Файлов пока нет"
+
+msgid "Upload your first file"
+msgstr "Загрузите первый файл"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "Previous"
+msgstr "Предыдущий"
+
+msgid "Next"
+msgstr "Следующий"
+
+msgid "Copy"
+msgstr "Копировать"
+
+#, python-format
+msgid "Shown: %(shown)s of %(count)s"
+msgstr "Показано: %(shown)s из %(count)s"
+
+#, python-format
+msgid "Selected: %(count)s"
+msgstr "Выбрано: %(count)s"
+
+#, python-format
+msgid "Delete “%(name)s”?"
+msgstr "Удалить «%(name)s»?"
+
+#, python-format
+msgid "Delete selected files: %(count)s?"
+msgstr "Удалить выбранные файлы (%(count)s)?"
+
+msgid "This cannot be undone."
+msgstr "Это действие нельзя отменить."
+
+msgid "Delete files"
+msgstr "Удаление файлов"
+
+#, python-format
+msgid "Anyone with this link can download the file for %(hours)s h. Replacing or deleting the file disables the link."
+msgstr "Любой, у кого есть эта ссылка, сможет скачать файл в течение %(hours)s ч. Если файл заменить или удалить, ссылка перестанет работать."
+
+msgid "B"
+msgstr "Б"
+
+msgid "KB"
+msgstr "КБ"
+
+msgid "MB"
+msgstr "МБ"
+
+msgid "GB"
+msgstr "ГБ"
+
+msgid "TB"
+msgstr "ТБ"
+
+msgid "Showing the first 512 KB"
+msgstr "Показаны первые 512 КБ"
+
+msgid "Sign in"
+msgstr "Войти"
+
+msgid "Enter the 6-digit code from your authenticator app"
+msgstr "Введите 6-значный код из приложения-аутентификатора"
+
+msgid "Enter one of your backup codes. Each code works only once."
+msgstr "Введите один из резервных кодов. Каждый код действует только один раз."
+
+msgid "Code"
+msgstr "Код"
+
+msgid "Use a backup code"
+msgstr "Войти с резервным кодом"
+
+msgid "Use authenticator app"
+msgstr "Войти с кодом из приложения"
+
+msgid "Upload files"
+msgstr "Загрузка файлов"
+
+#, python-format
+msgid "Up to %(size)s per upload"
+msgstr "До %(size)s за одну загрузку"
+
+msgid "Any file type, no size limit"
+msgstr "Любые типы файлов, без ограничения размера"
+
+msgid "Back to files"
+msgstr "К файлам"
+
+msgid "Drop files here or click to choose"
+msgstr "Перетащите файлы сюда или нажмите, чтобы выбрать"
+
+msgid "You can also paste files from the clipboard"
+msgstr "Файлы также можно вставить из буфера обмена"
+
+msgid "Clear"
+msgstr "Очистить"
+
+msgid "Remove"
+msgstr "Убрать"
+
+#, python-format
+msgid "Selected: %(count)s · %(size)s"
+msgstr "Выбрано: %(count)s · %(size)s"
+
+msgid "Waiting"
+msgstr "В очереди"
+
+#, python-format
+msgid "Uploading… %(percent)s%"
+msgstr "Загрузка… %(percent)s%"
+
+msgid "Uploaded"
+msgstr "Загружен"
+
+#, python-format
+msgid "Saved as %(name)s"
+msgstr "Сохранён как %(name)s"
+
+msgid "Failed"
+msgstr "Ошибка"
+
+msgid "Canceled"
+msgstr "Отменено"
+
+msgid "Too large"
+msgstr "Слишком большой"
+
+msgid "All files uploaded"
+msgstr "Все файлы загружены"
+
+msgid "Some files were not uploaded"
+msgstr "Некоторые файлы не загружены"
+
+msgid "Uploads are still running. Leave the page?"
+msgstr "Загрузка ещё идёт. Уйти со страницы?"
+
+msgid "Bad request"
+msgstr "Некорректный запрос"
+
+msgid "The request could not be processed. Reload the page and try again."
+msgstr "Не удалось обработать запрос. Обновите страницу и попробуйте снова."
+
+msgid "Unauthorized"
+msgstr "Требуется вход"
+
+msgid "Sign in to continue."
+msgstr "Войдите, чтобы продолжить."
+
+msgid "Access denied"
+msgstr "Доступ запрещён"
+
+msgid "You do not have access to this page."
+msgstr "У вас нет доступа к этой странице."
+
+msgid "Not found"
+msgstr "Не найдено"
+
+msgid "The page or file does not exist. It may have been moved or deleted."
+msgstr "Страница или файл не существует. Возможно, его переместили или удалили."
+
+msgid "Method not allowed"
+msgstr "Метод не поддерживается"
+
+msgid "This action is not supported here."
+msgstr "Это действие здесь не поддерживается."
+
+msgid "Link expired"
+msgstr "Ссылка устарела"
+
+msgid "This link is no longer valid. Ask for a new one."
+msgstr "Эта ссылка больше не действует. Запросите новую."
+
+msgid "File too large"
+msgstr "Файл слишком большой"
+
+msgid "The upload exceeds the allowed size."
+msgstr "Загрузка превышает допустимый размер."
+
+msgid "Too many requests"
+msgstr "Слишком много запросов"
+
+msgid "Slow down and try again in a moment."
+msgstr "Подождите немного и попробуйте снова."
+
+msgid "Server error"
+msgstr "Ошибка сервера"
+
+msgid "Something went wrong on the server. Try again later."
+msgstr "На сервере что-то пошло не так. Попробуйте позже."
+
+msgid "Error"
+msgstr "Ошибка"
+
+msgid "Something went wrong."
+msgstr "Что-то пошло не так."

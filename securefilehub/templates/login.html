@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Sign in') }}{% endblock %}
+{% block main_class %}center-page{% endblock %}
+{% block content %}
+<div class="auth-card card">
+  <div class="auth-logo">{{ icon('shield') }}</div>
+  <h1 class="auth-title">SecureFileHub</h1>
+  <p class="muted" data-mode-text="totp">{{ _('Enter the 6-digit code from your authenticator app') }}</p>
+  <p class="muted" data-mode-text="backup" hidden>{{ _('Enter one of your backup codes. Each code works only once.') }}</p>
+
+  <form method="post" class="auth-form" id="login-form" autocomplete="off">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="sr-only" for="code">{{ _('Code') }}</label>
+    <input class="input code-input" id="code" name="code" type="text" required autofocus
+           inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code"
+           placeholder="000000" spellcheck="false">
+    <button class="btn btn-primary btn-block" type="submit">{{ _('Sign in') }}</button>
+  </form>
+
+  <button class="link-button" type="button" id="toggle-mode"
+          data-totp="{{ _('Use a backup code') }}" data-backup="{{ _('Use authenticator app') }}">{{ _('Use a backup code') }}</button>
+
+  <div class="auth-footer">
+    {% include "_prefs.html" %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/login.js') }}" defer></script>{% endblock %}
