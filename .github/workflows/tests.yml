@@ -1,0 +1,41 @@
+name: tests
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: securefilehub:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test
+        run: |
+          mkdir -p uploads
+          docker run -d --name sfh -p 8000:8000 -v "$PWD/uploads:/app/uploads" securefilehub:test
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8000/login > /dev/null
+          docker exec sfh sh -c 'test "$(stat -c %u /proc/1)" = 1000'  # app runs unprivileged
+          docker exec sfh ls -la /app/uploads/.securefilehub  # private to the app user (mode 700)
+          docker logs sfh

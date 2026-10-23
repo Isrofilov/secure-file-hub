@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block main_class %}center-page{% endblock %}
+{% block content %}
+<div class="card error-card">
+  <div class="error-code">{{ code }}</div>
+  <h1>{{ title }}</h1>
+  <p class="muted">{{ text }}</p>
+  <div class="row-actions">
+    <a class="btn btn-primary" href="{{ url_for('auth.index') }}">{{ icon('home') }}<span>{{ _('Home') }}</span></a>
+    <button class="btn" type="button" data-action="back">{{ icon('back') }}<span>{{ _('Back') }}</span></button>
+  </div>
+</div>
+{% endblock %}

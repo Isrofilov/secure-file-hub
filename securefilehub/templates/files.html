@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}{{ _('Files') }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>{{ _('Files') }}</h1>
+    <p class="muted" id="files-summary">{{ _('Files: %(count)s · %(size)s', count=files|length, size=total_size|filesize) }}</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('files.upload_page') }}">{{ icon('upload') }}<span>{{ _('Upload') }}</span></a>
+</div>
+
+{% if files %}
+<div class="toolbar">
+  <label class="search">
+    {{ icon('search') }}
+    <span class="sr-only">{{ _('Search') }}</span>
+    <input class="input" type="search" id="search" placeholder="{{ _('Search files') }}" autocomplete="off">
+  </label>
+  <div class="segmented" role="group" aria-label="{{ _('View') }}">
+    <button class="btn btn-icon" type="button" data-view="list" title="{{ _('List') }}" aria-label="{{ _('List') }}" aria-pressed="true">{{ icon('list') }}</button>
+    <button class="btn btn-icon" type="button" data-view="grid" title="{{ _('Grid') }}" aria-label="{{ _('Grid') }}" aria-pressed="false">{{ icon('grid') }}</button>
+  </div>
+</div>
+
+<form class="files" id="files" method="post" data-view="list">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="files-head">
+    <label class="check"><input type="checkbox" id="select-all" aria-label="{{ _('Select all') }}"></label>
+    <button class="sort" type="button" data-sort="name">{{ _('Name') }}</button>
+    <button class="sort" type="button" data-sort="size">{{ _('Size') }}</button>
+    <button class="sort" type="button" data-sort="mtime" aria-sort="descending">{{ _('Modified') }}</button>
+    <span></span>
+  </div>
+  <ul class="file-list" id="file-list">
+    {% for f in files %}
+    {% set url = url_for('files.download', name=f.name) %}
+    <li class="file" data-name="{{ f.name }}" data-size="{{ f.size }}" data-mtime="{{ f.mtime|int }}"{% if f.preview %} data-preview="{{ f.preview }}"{% endif %}>
+      <label class="check"><input type="checkbox" name="name" value="{{ f.name }}" aria-label="{{ _('Select') }} {{ f.name }}"></label>
+      <a class="file-thumb kind-{{ f.kind }}" href="{{ url }}" tabindex="-1" aria-hidden="true">
+        {% if thumbnails and f.has_thumbnail %}
+        <img src="{{ url_for('files.thumbnail', name=f.name, v=f.version) }}" alt="" loading="lazy" decoding="async">
+        {% endif %}
+        {{ icon(f.kind if f.kind != 'file' else 'file') }}
+      </a>
+      <div class="file-main">
+        <a class="file-name" href="{{ url }}" title="{{ f.name }}">{{ f.name }}</a>
+        <span class="file-meta muted">{{ f.size|filesize }} · <time datetime="{{ f.mtime|int }}">{{ f.mtime|localtime }}</time></span>
+      </div>
+      <span class="file-size muted">{{ f.size|filesize }}</span>
+      <span class="file-date muted">{{ f.mtime|localtime }}</span>
+      <div class="file-actions">
+        {% if f.preview %}<button class="btn btn-ghost btn-icon btn-sm" type="button" data-action="preview" title="{{ _('Preview') }}" aria-label="{{ _('Preview') }}">{{ icon('eye') }}</button>{% endif %}
+        <button class="btn btn-ghost btn-icon btn-sm" type="button" data-action="share" title="{{ _('Share link') }}" aria-label="{{ _('Share link') }}">{{ icon('link') }}</button>
+        <a class="btn btn-ghost btn-icon btn-sm" href="{{ url }}" download title="{{ _('Download') }}" aria-label="{{ _('Download') }}">{{ icon('download') }}</a>
+        <button class="btn btn-ghost btn-icon btn-sm btn-danger-ghost" type="button" data-action="delete" title="{{ _('Delete') }}" aria-label="{{ _('Delete') }}">{{ icon('trash') }}</button>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="empty" id="no-results" hidden>{{ icon('search') }}<span>{{ _('No files match your search') }}</span></p>
+
+  <div class="selection-bar" id="selection-bar" hidden>
+    <span id="selection-count"></span>
+    <div class="row-actions">
+      <button class="btn btn-sm" type="submit" formaction="{{ url_for('files.download_many') }}">{{ icon('download') }}<span>{{ _('Download') }}</span></button>
+      <button class="btn btn-sm btn-danger" type="submit" formaction="{{ url_for('files.delete') }}" data-action="delete-selected">{{ icon('trash') }}<span>{{ _('Delete') }}</span></button>
+      <button class="btn btn-ghost btn-icon btn-sm" type="button" id="clear-selection" title="{{ _('Clear selection') }}" aria-label="{{ _('Clear selection') }}">{{ icon('x') }}</button>
+    </div>
+  </div>
+</form>
+{% else %}
+<a class="empty-state" href="{{ url_for('files.upload_page') }}">
+  {{ icon('cloud-upload') }}
+  <strong>{{ _('No files yet') }}</strong>
+  <span class="muted">{{ _('Upload your first file') }}</span>
+</a>
+{% endif %}
+
+<dialog class="modal modal-preview" id="preview-dialog">
+  <div class="preview-head">
+    <h2 class="modal-title" id="preview-title"></h2>
+    <div class="row-actions">
+      <a class="btn btn-ghost btn-icon" id="preview-download" download title="{{ _('Download') }}" aria-label="{{ _('Download') }}">{{ icon('download') }}</a>
+      <button class="btn btn-ghost btn-icon" type="button" data-close title="{{ _('Close') }}" aria-label="{{ _('Close') }}">{{ icon('x') }}</button>
+    </div>
+  </div>
+  <div class="preview-body" id="preview-body"></div>
+  <button class="preview-nav prev" type="button" data-step="-1" aria-label="{{ _('Previous') }}">‹</button>
+  <button class="preview-nav next" type="button" data-step="1" aria-label="{{ _('Next') }}">›</button>
+</dialog>
+
+<dialog class="modal modal-sm" id="share-dialog">
+  <form method="dialog">
+    <h2 class="modal-title">{{ _('Share link') }}</h2>
+    <div class="modal-body">
+      <p class="muted" id="share-note"></p>
+      <div class="copy-field">
+        <input class="input" id="share-url" type="text" readonly>
+        <button class="btn btn-primary" type="button" id="share-copy">{{ icon('copy') }}<span>{{ _('Copy') }}</span></button>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="btn">{{ _('Close') }}</button></div>
+  </form>
+</dialog>
+
+<script type="application/json" id="files-i18n">{{ {
+  "summary": _("Files: %(count)s · %(size)s"),
+  "shown": _("Shown: %(shown)s of %(count)s"),
+  "selected": _("Selected: %(count)s"),
+  "deleteOne": _("Delete “%(name)s”?"),
+  "deleteMany": _("Delete selected files: %(count)s?"),
+  "deleteNote": _("This cannot be undone."),
+  "deleteTitle": _("Delete files"),
+  "deleted": _("Deleted %(name)s"),
+  "deletedMany": _("Files deleted: %(count)d"),
+  "shareNote": _("Anyone with this link can download the file for %(hours)s h. Replacing or deleting the file disables the link."),
+  "units": [_("B"), _("KB"), _("MB"), _("GB"), _("TB")],
+  "previewTooLarge": _("Showing the first 512 KB"),
+  "shareUrl": url_for('files.share', name='__NAME__'),
+  "deleteUrl": url_for('files.delete'),
+} | tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/files.js') }}" defer></script>{% endblock %}
