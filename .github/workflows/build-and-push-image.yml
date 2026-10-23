@@ -2,6 +2,8 @@ name: build-and-push-image
 on:
   release:
     types: [published]
+  push:
+    tags: ["[0-9]+.[0-9]+*"]
 
 jobs:
   build-and-push-image:
